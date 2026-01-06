@@ -1,0 +1,5 @@
+{
+  "name": "Pelada App",
+  "description": "Uma plataforma completa para organizar peladas de futebol, gerenciar elencos, sortear times equilibrados, controlar finanças e acompanhar estatísticas da temporada.",
+  "requestFramePermissions": []
+}

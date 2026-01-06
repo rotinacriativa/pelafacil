@@ -1,0 +1,143 @@
+
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import Layout from '../components/layout/Layout';
+import { useMatches } from '../hooks/useMatches';
+import { formatDate, formatTime } from '../utils/format';
+
+const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const { nextMatch, loading } = useMatches();
+
+  const quickActions = [
+    { name: 'Explorar', icon: 'search', path: '/explore', color: 'bg-primary/10 text-primary-dark', desc: 'Encontrar partidas' },
+    { name: 'Placar', icon: 'scoreboard', path: '/scoreboard', color: 'bg-primary/10 text-primary-dark', desc: 'Cronômetro e gols' },
+    // { name: 'Financeiro', icon: 'payments', path: '/financial', color: 'bg-blue-100 text-blue-600', desc: 'Caixa e pagamentos' },
+    { name: 'Elenco', icon: 'groups', path: '/roster', color: 'bg-orange-100 text-orange-600', desc: 'Gerenciar jogadores' },
+    // { name: 'Sorteio', icon: 'shuffle', path: '/generator', color: 'bg-emerald-100 text-emerald-600', desc: 'Equilibrar times' },
+  ];
+
+  return (
+    <Layout>
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-10 py-8 flex flex-col gap-8">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="bg-primary/20 text-green-800 dark:text-green-300 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Grupo Ativo</span>
+            </div>
+            <h2 className="text-text-main dark:text-white text-3xl md:text-4xl font-black tracking-tight leading-tight">Peladeiros de Terça</h2>
+            <p className="text-text-muted dark:text-gray-400 text-base md:text-lg font-normal">Dashboard do Grupo</p>
+          </div>
+          <button onClick={() => navigate('/roster')} className="flex items-center gap-2 text-text-muted hover:text-primary transition-colors bg-white dark:bg-surface-dark px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
+            <span className="material-symbols-outlined">settings</span>
+            <span className="text-sm font-medium">Configurações</span>
+          </button>
+        </header>
+
+        {/* Quick Links Section */}
+        <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          {quickActions.map((action) => (
+            <Link
+              key={action.name}
+              to={action.path}
+              className="bg-surface-light dark:bg-surface-dark p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-primary/50 transition-all flex flex-col items-start text-left relative group overflow-hidden"
+            >
+              <div className={`size-12 rounded-xl ${action.color} flex items-center justify-center mb-4 transition-transform group-hover:scale-110 overflow-hidden`}>
+                <span className="material-symbols-outlined text-2xl select-none leading-none">{action.icon}</span>
+              </div>
+              <div>
+                <h3 className="font-bold text-lg dark:text-white leading-tight mb-1">{action.name}</h3>
+                <p className="text-xs text-text-muted dark:text-gray-400 leading-tight">{action.desc}</p>
+              </div>
+            </Link>
+          ))}
+        </section>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-8 flex flex-col gap-6">
+
+            {loading ? (
+              <div className="h-64 bg-surface-light dark:bg-surface-dark rounded-2xl animate-pulse flex items-center justify-center">
+                <p className="text-text-muted font-bold">Carregando próxima partida...</p>
+              </div>
+            ) : nextMatch ? (
+              <>
+                <div className="group relative overflow-hidden rounded-2xl bg-surface-light dark:bg-surface-dark shadow-sm border border-slate-100 dark:border-slate-800 transition-all hover:shadow-lg">
+                  <div className="absolute top-4 left-4 z-10 flex gap-2">
+                    <span className="px-4 py-1.5 rounded-full bg-primary text-text-main text-xs font-bold shadow-sm flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm icon-filled">check_circle</span>
+                      Confirmando Jogadores
+                    </span>
+                  </div>
+                  <div className="flex flex-col md:flex-row">
+                    <div className="w-full md:w-2/5 h-48 md:h-auto relative">
+                      <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuDm13Wo24W9E7GWnWn6pIAYJTas0ntGVJmOxUoGr8O5hY5maJY4KKRR9yoLfAKzrvig1NtFd74OxU4LhL4UiE1ma0Ez44AB9nmX7LvdmnmmgEEDevY0-Iv3q_7ty88aox9jutcHv-KfbV5C4ufyqJZhM4VIhW2i5MAkLtIcoRihi2trhESB7N4Mhys8t2A_O9HsdY-47wJqUpIuVL7GmOUUPEnN3PfoOFQXGOrGc3p54iMWOXLyKzLVZ1_N_63C06Uabi8u-kK0120")' }}></div>
+                    </div>
+                    <div className="flex-1 p-6 md:p-8 flex flex-col justify-center gap-4">
+                      <div>
+                        <p className="text-primary font-bold text-xs uppercase tracking-wider mb-1">Próxima Partida</p>
+                        <h3 className="text-text-main dark:text-white text-3xl font-black leading-tight">
+                          {formatDate(nextMatch.date_time)} <span className="text-gray-300 dark:text-gray-600 font-light mx-1">|</span> {formatTime(nextMatch.date_time)}
+                        </h3>
+                      </div>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-start gap-2 text-text-muted dark:text-gray-400">
+                          <span className="material-symbols-outlined text-primary">location_on</span>
+                          <div>
+                            <p className="font-bold text-text-main dark:text-gray-200">{nextMatch.location}</p>
+                            <p className="text-xs">Clique para ver no mapa</p>
+                          </div>
+                        </div>
+                        <div className="w-full">
+                          <div className="flex justify-between text-xs font-bold mb-1">
+                            <span>Vagas</span>
+                            <span className="text-text-main dark:text-white">--/{nextMatch.max_players}</span>
+                          </div>
+                          <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
+                            <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: '10%' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button onClick={() => navigate(`/match/${nextMatch.id}`)} className="flex-1 group relative overflow-hidden rounded-xl h-14 bg-primary hover:bg-primary-hover transition-colors flex items-center justify-center shadow-lg shadow-primary/20">
+                    <span className="material-symbols-outlined mr-2 font-bold">thumb_up</span>
+                    <span className="text-text-main text-lg font-bold">Pedir Vaga</span>
+                  </button>
+                  <button onClick={() => navigate('/generator')} className="flex-1 bg-white dark:bg-surface-dark border-2 border-gray-200 dark:border-gray-700 hover:border-primary rounded-xl h-14 flex items-center justify-center transition-colors">
+                    <span className="material-symbols-outlined mr-2">shuffle</span>
+                    <span className="text-text-main dark:text-white font-bold text-lg">Sortear Times</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="group relative overflow-hidden rounded-2xl bg-surface-light dark:bg-surface-dark shadow-sm border border-slate-100 dark:border-slate-800 p-8 flex flex-col items-center justify-center gap-4 text-center">
+                <div className="size-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-2">
+                  <span className="material-symbols-outlined text-3xl">event_busy</span>
+                </div>
+                <h3 className="text-xl font-bold dark:text-white">Nenhuma partida agendada</h3>
+                <p className="text-text-muted">Não há jogos marcados no momento. Que tal começar um?</p>
+                <button onClick={() => navigate('/schedule-match')} className="bg-primary text-text-main font-bold py-2.5 px-6 rounded-full hover:bg-primary-hover shadow-lg shadow-primary/20 mt-2">
+                  Criar Nova Partida
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="lg:col-span-4 flex flex-col gap-4">
+            <h3 className="text-lg font-bold text-text-main dark:text-white px-2">Estatísticas Rápidas</h3>
+            <div className="bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 text-center opacity-70">
+              <span className="material-symbols-outlined text-4xl text-slate-300">lock</span>
+              <p className="text-sm font-bold text-slate-500">Disponível na Fase 2</p>
+            </div>
+          </div>
+        </div>
+      </main>
+    </Layout>
+  );
+};
+
+export default Dashboard;
