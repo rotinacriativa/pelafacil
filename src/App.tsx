@@ -19,35 +19,45 @@ const ExploreMatches = React.lazy(() => import('./pages/ExploreMatches'));
 const ManageRequests = React.lazy(() => import('./pages/ManageRequests'));
 const UserRequests = React.lazy(() => import('./pages/UserRequests'));
 
+import { AuthProvider } from './contexts/AuthContext';
+import { PrivateRoute } from './components/auth/PrivateRoute';
+
 const App: React.FC = () => {
   return (
-    <HashRouter>
-      <React.Suspense fallback={
-        <div className="flex items-center justify-center min-h-screen bg-background-light dark:bg-background-dark">
-          <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
-        </div>
-      }>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/explore" element={<ExploreMatches />} />
+    <AuthProvider>
+      <HashRouter>
+        <React.Suspense fallback={
+          <div className="flex items-center justify-center min-h-screen bg-background-light dark:bg-background-dark">
+            <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
+          </div>
+        }>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
 
-          <Route path="/my-requests" element={<UserRequests />} />
-          <Route path="/requests" element={<ManageRequests />} />
-          <Route path="/create-group" element={<CreateGroup />} />
-          <Route path="/schedule-match" element={<ScheduleMatch />} />
-          <Route path="/match/:id" element={<MatchDetail />} />
-          <Route path="/roster" element={<RosterManagement />} />
+            {/* Private Routes */}
+            <Route element={<PrivateRoute />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/explore" element={<ExploreMatches />} />
 
-          <Route path="/generator" element={<TeamGenerator />} />
-          <Route path="/scoreboard" element={<Scoreboard />} />
-          <Route path="/stats" element={<StatsPage />} />
-          <Route path="/financial" element={<FinancialPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-        </Routes>
-      </React.Suspense>
-    </HashRouter>
+              <Route path="/my-requests" element={<UserRequests />} />
+              <Route path="/requests" element={<ManageRequests />} />
+              <Route path="/create-group" element={<CreateGroup />} />
+              <Route path="/schedule-match" element={<ScheduleMatch />} />
+              <Route path="/match/:id" element={<MatchDetail />} />
+              <Route path="/roster" element={<RosterManagement />} />
+
+              <Route path="/generator" element={<TeamGenerator />} />
+              <Route path="/scoreboard" element={<Scoreboard />} />
+              <Route path="/stats" element={<StatsPage />} />
+              <Route path="/match/:id/financial" element={<FinancialPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+            </Route>
+          </Routes>
+        </React.Suspense>
+      </HashRouter>
+    </AuthProvider>
   );
 };
 

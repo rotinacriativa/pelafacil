@@ -1,40 +1,67 @@
 
 import React, { useState } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import SuccessModal from '../components/features/SuccessModal';
-import { MOCK_PLAYERS } from '../constants';
+import { useMatchDetails } from '../hooks/useMatchDetails';
 
 const MatchDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { match, loading, requestEntry } = useMatchDetails(id);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
-  // Simulated match data based on the design
-  const matchInfo = {
-    title: "Pelada dos Amigos - Quinta Feira",
-    location: "São Paulo, Zona Sul",
-    arena: "Arena Soccer Grass",
-    court: "Campo 3 (Sintético)",
-    price: "R$ 25,00",
-    date: "Quinta, 14 Out",
-    time: "20:00 - 22:00",
-    slotsLeft: 3,
-    modality: "Futebol 7",
-    level: "Intermediário",
-    type: "Misto"
-  };
-
+  // Fallback for rules (could be in DB later)
   const rules = [
     { title: 'Sem Carrinhos', desc: 'Para evitar lesões, carrinhos são estritamente proíbidos.', icon: 'block', color: 'bg-red-100 text-red-600' },
-    { title: 'Pagamento Antecipado', desc: 'O pagamento deve ser feito até 2 horas antes do jogo via PIX.', icon: 'payments', color: 'bg-blue-100 text-blue-600' },
+    { title: 'Pagamento Antecipado', desc: 'O pagamento deve ser feito até 2 horas antes do jogo.', icon: 'payments', color: 'bg-blue-100 text-blue-600' },
     { title: 'Goleiro Mensalista', desc: 'Já temos goleiro fixo, mas aceitamos reservas.', icon: 'sports_handball', color: 'bg-green-100 text-green-700' },
   ];
 
-  const handleRequestEntry = () => {
-    // Show success modal instead of navigating
-    setIsSuccessModalOpen(true);
+  const handleRequestEntry = async () => {
+    const success = await requestEntry();
+    if (success) {
+      setIsSuccessModalOpen(true);
+    }
   };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex-1 flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!match) {
+    return (
+      <Layout>
+        <div className="flex-1 flex flex-col items-center justify-center h-screen gap-4">
+          <h2 className="text-2xl font-bold">Partida não encontrada</h2>
+          <button onClick={() => navigate('/dashboard')} className="text-primary hover:underline">Voltar ao Início</button>
+        </div>
+      </Layout>
+    );
+  }
+
+  const slotsLeft = Math.max(0, match.max_players - match.player_count);
+  const dateObj = new Date(match.date_time);
+  const dateStr = dateObj.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' });
+  const timeStr = dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  // Determine button state
+  const isOwner = false; // logic would be: session.user.id === match.group.owner_id
+  const getButtonState = () => {
+    if (match.user_status === 'approved') return { text: 'Você já está no jogo!', disabled: true, class: 'bg-green-500 text-white cursor-default' };
+    if (match.user_status === 'requested') return { text: 'Pedido Enviado', disabled: true, class: 'bg-yellow-500 text-white cursor-default' };
+    if (match.user_status === 'waitlist') return { text: 'Na Lista de Espera', disabled: true, class: 'bg-orange-500 text-white cursor-default' };
+    if (slotsLeft === 0) return { text: 'Entrar na Lista de Espera', disabled: false, class: 'bg-orange-500 text-white hover:bg-orange-600', action: handleRequestEntry };
+    return { text: 'Pedir Vaga', disabled: false, class: 'bg-primary text-[#111812] hover:bg-[#0fdc20]', action: handleRequestEntry };
+  };
+
+  const btnState = getButtonState();
 
   return (
     <Layout>
@@ -56,16 +83,16 @@ const MatchDetail: React.FC = () => {
 
           <div className="absolute bottom-0 left-0 p-6 md:p-10 w-full z-10 flex flex-col items-start">
             <div className="flex gap-2 mb-3 flex-wrap">
-              <span className="bg-primary text-[#111812] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{matchInfo.modality}</span>
-              <span className="bg-white/20 text-white backdrop-blur-md border border-white/30 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{matchInfo.level}</span>
-              <span className="bg-white/20 text-white backdrop-blur-md border border-white/30 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">{matchInfo.type}</span>
+              <span className="bg-primary text-[#111812] text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Futebol Society</span>
+              <span className="bg-white/20 text-white backdrop-blur-md border border-white/30 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Intermediário</span>
+              <span className="bg-white/20 text-white backdrop-blur-md border border-white/30 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">Misto</span>
             </div>
             <h1 className="text-white tracking-tight text-3xl md:text-5xl font-black leading-tight mb-2 border-none pb-0">
-              {matchInfo.title}
+              {match.group?.name || 'Pelada do Grupo'}
             </h1>
             <p className="text-gray-200 text-sm md:text-base font-medium flex items-center gap-2">
               <span className="material-symbols-outlined text-primary text-lg">location_on</span>
-              {matchInfo.location}
+              {match.location}
             </p>
           </div>
         </div>
@@ -90,7 +117,7 @@ const MatchDetail: React.FC = () => {
                 Sobre o Grupo
               </h2>
               <p className="text-[#111812]/80 dark:text-gray-300 text-base leading-relaxed mb-6">
-                Nossa pelada acontece toda quinta-feira religiosamente há 3 anos. Somos um grupo focado na diversão e no respeito. Não aceitamos jogadas violentas ou brigas. O objetivo é suar a camisa e dar risada.
+                {match.group?.description || 'Venha jogar conosco! Grupo animado e organizado.'}
               </p>
               <div className="bg-background-light dark:bg-background-dark p-5 rounded-xl border-l-4 border-primary">
                 <h3 className="text-[#111812] dark:text-white font-bold mb-2">O que buscamos:</h3>
@@ -108,19 +135,12 @@ const MatchDetail: React.FC = () => {
               </div>
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex -space-x-4">
-                  {MOCK_PLAYERS.slice(0, 4).map((player, idx) => (
-                    <img
-                      key={player.id}
-                      alt={player.name}
-                      className="w-12 h-12 rounded-full border-2 border-white dark:border-surface-dark object-cover"
-                      src={player.avatar}
-                    />
-                  ))}
+                  {/* Empty state for now */}
                   <div className="w-12 h-12 rounded-full border-2 border-white dark:border-surface-dark bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300">
-                    +18
+                    --
                   </div>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">22 jogadores no grupo</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{match.player_count} confirmados</p>
               </div>
             </div>
 
@@ -160,8 +180,8 @@ const MatchDetail: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-[10px] text-gray-500 dark:text-gray-400 font-black uppercase tracking-widest">Quando</p>
-                      <p className="text-[#111812] dark:text-white font-bold">{matchInfo.date}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">{matchInfo.time}</p>
+                      <p className="text-[#111812] dark:text-white font-bold capitalize">{dateStr}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">{timeStr}</p>
                     </div>
                   </div>
 
@@ -171,8 +191,7 @@ const MatchDetail: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-[10px] text-gray-500 dark:text-gray-400 font-black uppercase tracking-widest">Onde</p>
-                      <p className="text-[#111812] dark:text-white font-bold">{matchInfo.arena}</p>
-                      <p className="text-sm text-gray-600 dark:text-gray-300">{matchInfo.court}</p>
+                      <p className="text-[#111812] dark:text-white font-bold">{match.location || 'Local a definir'}</p>
                     </div>
                   </div>
 
@@ -182,22 +201,9 @@ const MatchDetail: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-[10px] text-gray-500 dark:text-gray-400 font-black uppercase tracking-widest">Valor</p>
-                      <p className="text-[#111812] dark:text-white font-bold">{matchInfo.price}</p>
+                      <p className="text-[#111812] dark:text-white font-bold">{match.price_per_person > 0 ? `R$ ${match.price_per_person.toFixed(2)}` : 'Gratuito'}</p>
                       <p className="text-sm text-gray-600 dark:text-gray-300">por pessoa</p>
                     </div>
-                  </div>
-                </div>
-
-                {/* Map Preview */}
-                <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-slate-100 dark:border-slate-800 group cursor-pointer">
-                  <div
-                    className="w-full h-full bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-                    style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuBmxKBOnMixLKONtEhPqA8OrE4_cUfXjpSzJQ0_4rOJMlIJhj3bAEfgv-KbEY7aGawtGeyASDAr55G8nlg8EmnhkgQIEKvcRI5Ck5QxsOFEzq1QRSHgzdnDRoZpzLNjnTB767bUylLdq7RwHXpp2Ufd2N-K53sDio8obYPIwg6fhMeU-4-RJgYPA50OAvRQ9q3_tSP2VWhVim7aNvN8nit7FsWAj3LiV5fDtE6J5ATF0oIMFdlYi4rl38DicwXvJmrhw7Y7T78X8Ko")' }}
-                  />
-                  <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                    <button className="bg-white text-black text-[10px] font-black px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1 hover:bg-gray-50 transition-all uppercase tracking-widest">
-                      <span className="material-symbols-outlined text-base">near_me</span> Ver Mapa
-                    </button>
                   </div>
                 </div>
 
@@ -205,15 +211,20 @@ const MatchDetail: React.FC = () => {
                 <div className="border-t border-slate-100 dark:border-slate-800 pt-6 flex flex-col gap-3">
                   <div className="flex justify-between items-center text-sm mb-2">
                     <span className="text-gray-600 dark:text-gray-400 font-medium">Vagas disponíveis</span>
-                    <span className="font-black text-primary uppercase tracking-wider">{matchInfo.slotsLeft} restantes</span>
+                    <span className={`font-black uppercase tracking-wider ${slotsLeft > 0 ? 'text-primary' : 'text-red-500'}`}>
+                      {slotsLeft > 0 ? `${slotsLeft} restantes` : 'LOTADO'}
+                    </span>
                   </div>
                   <button
-                    onClick={handleRequestEntry}
-                    className="w-full flex items-center justify-center h-14 bg-primary text-[#111812] text-lg font-black rounded-full hover:bg-[#0fdc20] hover:shadow-lg hover:-translate-y-0.5 transition-all active:scale-95 active:shadow-none shadow-md shadow-primary/20"
+                    onClick={btnState.action}
+                    disabled={btnState.disabled}
+                    className={`w-full flex items-center justify-center h-14 text-lg font-black rounded-full transition-all active:scale-95 active:shadow-none shadow-md shadow-primary/20 ${btnState.class}`}
                   >
-                    Pedir Vaga
+                    {btnState.text}
                   </button>
-                  <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">O organizador aprovará seu pedido em breve.</p>
+                  <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
+                    {match.user_status === 'requested' ? 'Aguardando aprovação do organizador.' : 'O organizador aprovará seu pedido em breve.'}
+                  </p>
                 </div>
               </div>
             </div>

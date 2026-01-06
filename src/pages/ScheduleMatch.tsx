@@ -79,7 +79,7 @@ const ScheduleMatch: React.FC = () => {
       // Combine Date and Time
       const dateTime = new Date(`${date}T${time}:00`).toISOString();
 
-      const { error: matchError } = await supabase
+      const { data, error: matchError } = await supabase
         .from('matches')
         .insert({
           group_id: groupId,
@@ -88,9 +88,23 @@ const ScheduleMatch: React.FC = () => {
           max_players: slots,
           price_per_person: price ? parseFloat(price) : 0,
           status: 'scheduled'
-        });
+        })
+        .select();
+
+      const newMatchData = data;
 
       if (matchError) throw matchError;
+
+      // 3. Add Creator as Admin/Player (Automatically Approved)
+      const { error: playerError } = await supabase
+        .from('match_players')
+        .insert({
+          match_id: newMatchData[0].id,
+          user_id: session.user.id,
+          status: 'approved' // Auto-approved
+        });
+
+      if (playerError) console.error('Error adding creator to match:', playerError); // Non-blocking but log it
 
       // Success!
       // In MVP, maybe we show a modal? For now, go to Dashboard where they will see it.

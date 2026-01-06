@@ -2,7 +2,9 @@
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
-import { MOCK_PLAYERS, MOCK_MATCHES } from '../constants';
+// import { MOCK_PLAYERS, MOCK_MATCHES } from '../constants';
+const MOCK_PLAYERS: any[] = [];
+const MOCK_MATCHES: any[] = [];
 
 const StatsPage: React.FC = () => {
   const navigate = useNavigate();

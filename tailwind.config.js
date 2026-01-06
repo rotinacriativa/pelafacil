@@ -13,20 +13,19 @@ export default {
         extend: {
             colors: {
                 "primary": "#13ec25",
-                "primary-hover": "#0fd120",
-                "primary-dark": "#0ea31b",
                 "background-light": "#f6f8f6",
                 "background-dark": "#102212",
                 "surface-light": "#ffffff",
-                "surface-dark": "#1a2e1d",
-                "text-main": "#111812",
-                "text-secondary": "#618965",
-                "text-muted": "#618965",
-                "accent-warning": "#f59e0b",
-                "danger": "#ff4d4d",
+                "surface-dark": "#152a18",
+                "text-main-light": "#111812",
+                "text-main-dark": "#e0e6e0",
+                "text-sec-light": "#618965",
+                "text-sec-dark": "#8fa892",
+                "border-light": "#dbe6dc",
+                "border-dark": "#2a402d",
             },
             fontFamily: {
-                "display": ["Lexend", "sans-serif"],
+                "display": ["Spline Sans", "Lexend", "sans-serif"],
                 "body": ["Noto Sans", "sans-serif"],
             },
             borderRadius: {

@@ -5,22 +5,72 @@ import Layout from '../components/layout/Layout';
 
 type ProfileTab = 'personal' | 'preferences' | 'notifications' | 'security';
 
+import { supabase } from '../lib/supabase';
+
+/* ... imports ... */
+import { useAuth } from '../contexts/AuthContext';
+
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>('personal');
+  const [loading, setLoading] = useState(true);
 
   const [profileImage, setProfileImage] = useState('https://lh3.googleusercontent.com/aida-public/AB6AXuAcgmO3HjVs3LG8kmX8RtT9cNYG2HE8jfT-tR4WZT6bvTlOkanGFTi4YGbi_1Fx-sGQya8sBtsDuNcWM9YJ2vXi5FzMH4Hmjr-5o-ASj45BoapfxAhzlSYgUyptTUhQfwmVib4Kl_ZubfFJOHy3g0FOax9VCT7wYA-kdIn5PYTfeVGQNhdHMEStTcHqQIDLceaakZ6dzOxdpN4ZwBVWWju_Kk2yL0Mk4wbDpHx7t1X0Ks8OvHxtHCVgi-n7gAfBFNoqnh-gtPG_jEM');
-  const [name, setName] = useState('André Santos');
-  const [email, setEmail] = useState('andre.santos@exemplo.com');
-  const [phone, setPhone] = useState('(11) 98765-4321');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [position, setPosition] = useState('Meia');
+  const [frequency, setFrequency] = useState('Semanal');
+  const [foot, setFoot] = useState('Destro');
+  const [level, setLevel] = useState('Amador / Lazer');
 
   const stats = [
-    { label: 'Jogos', value: '42', icon: 'stadium' },
-    { label: 'Gols', value: '15', icon: 'sports_soccer' },
-    { label: 'MVPs', value: '4', icon: 'emoji_events' },
+    { label: 'Jogos', value: '0', icon: 'stadium' },
+    { label: 'Gols', value: '0', icon: 'sports_soccer' },
+    { label: 'MVPs', value: '0', icon: 'emoji_events' },
   ];
+
+  // Fetch Profile Data
+  React.useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return; // Should be handled by PrivateRoute, but safety check
+
+      try {
+        // Set basic auth data
+        setEmail(user.email || '');
+
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          // If profile doesn't exist (edge case), we might want to create it or just ignore
+          console.error('Error fetching profile:', error);
+        }
+
+        if (profile) {
+          setName(profile.name || '');
+          setProfileImage(profile.avatar_url || profileImage);
+          setPosition(profile.position || 'Meia');
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [user]);
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   const handleImageClick = () => {
     fileInputRef.current?.click();
@@ -96,13 +146,27 @@ const ProfilePage: React.FC = () => {
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-bold text-text-muted">Pé Dominante</label>
                 <div className="flex gap-2">
-                  <button className="flex-1 h-12 rounded-xl border-2 border-primary bg-primary/10 text-primary-dark font-bold">Destro</button>
-                  <button className="flex-1 h-12 rounded-xl border border-slate-200 dark:border-slate-700 font-bold">Canhoto</button>
+                  {['Destro', 'Canhoto', 'Ambidestro'].map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => setFoot(option)}
+                      className={`flex-1 h-12 rounded-xl font-bold transition-all border ${foot === option
+                        ? 'border-primary bg-primary/10 text-primary-dark shadow-sm ring-1 ring-primary/50'
+                        : 'border-slate-200 dark:border-slate-700 text-text-muted hover:bg-slate-50 dark:hover:bg-slate-800'
+                        }`}
+                    >
+                      {option}
+                    </button>
+                  ))}
                 </div>
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-sm font-bold text-text-muted">Nível Competitivo</label>
-                <select className="h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-background-light dark:bg-background-dark dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all appearance-none">
+                <select
+                  value={level}
+                  onChange={(e) => setLevel(e.target.value)}
+                  className="h-12 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-background-light dark:bg-background-dark dark:text-white focus:ring-2 focus:ring-primary outline-none transition-all appearance-none"
+                >
                   <option>Amador / Lazer</option>
                   <option>Intermediário</option>
                   <option>Avançado / Pro</option>
@@ -112,7 +176,16 @@ const ProfilePage: React.FC = () => {
                 <label className="text-sm font-bold text-text-muted">Frequência Desejada</label>
                 <div className="flex flex-wrap gap-2">
                   {['Semanal', 'Bi-semanal', 'Mensal', 'Reserva'].map(freq => (
-                    <button key={freq} className={`px-4 py-2 rounded-full border text-xs font-bold ${freq === 'Semanal' ? 'border-primary bg-primary/10 text-primary-dark' : 'border-slate-200 dark:border-slate-700 text-text-muted'}`}>{freq}</button>
+                    <button
+                      key={freq}
+                      onClick={() => setFrequency(freq)}
+                      className={`px-4 py-2 rounded-full border text-xs font-bold transition-all ${frequency === freq
+                        ? 'border-primary bg-primary/10 text-primary-dark shadow-sm'
+                        : 'border-slate-200 dark:border-slate-700 text-text-muted hover:bg-slate-50 dark:hover:bg-slate-800'
+                        }`}
+                    >
+                      {freq}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -252,7 +325,7 @@ const ProfilePage: React.FC = () => {
               <span className={`material-symbols-outlined ${activeTab === 'security' ? 'icon-filled' : ''}`}>security</span>
               Segurança
             </button>
-            <button onClick={() => navigate('/login')} className="flex items-center gap-3 px-6 py-4 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-2xl font-bold transition-all mt-4">
+            <button onClick={handleLogout} className="flex items-center gap-3 px-6 py-4 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-2xl font-bold transition-all mt-4">
               <span className="material-symbols-outlined">logout</span>
               Sair da Conta
             </button>

@@ -1,31 +1,119 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { useMatches } from '../hooks/useMatches';
+import { useGroups } from '../hooks/useGroups';
+import { useAuth } from '../contexts/AuthContext';
 import { formatDate, formatTime } from '../utils/format';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { nextMatch, loading } = useMatches();
+  const { user } = useAuth();
+  const { groups, loading: groupsLoading, refreshGroups } = useGroups();
+  const { nextMatch, loading: matchesLoading } = useMatches();
+
+  useEffect(() => {
+    refreshGroups();
+  }, [refreshGroups]);
+
+  // State for selected group
+  const [selectedGroupId, setSelectedGroupId] = React.useState<string | null>(null);
+
+  // Set default group on load
+  useEffect(() => {
+    if (groups.length > 0 && !selectedGroupId) {
+      setSelectedGroupId(groups[0].id);
+    }
+  }, [groups, selectedGroupId]);
+
+  const activeGroup = groups.find(g => g.id === selectedGroupId) || (groups.length > 0 ? groups[0] : null);
+
+  // Combined loading state
+  const isLoading = groupsLoading || (groups.length > 0 && matchesLoading);
 
   const quickActions = [
     { name: 'Explorar', icon: 'search', path: '/explore', color: 'bg-primary/10 text-primary-dark', desc: 'Encontrar partidas' },
     { name: 'Placar', icon: 'scoreboard', path: '/scoreboard', color: 'bg-primary/10 text-primary-dark', desc: 'Cronômetro e gols' },
-    // { name: 'Financeiro', icon: 'payments', path: '/financial', color: 'bg-blue-100 text-blue-600', desc: 'Caixa e pagamentos' },
     { name: 'Elenco', icon: 'groups', path: '/roster', color: 'bg-orange-100 text-orange-600', desc: 'Gerenciar jogadores' },
-    // { name: 'Sorteio', icon: 'shuffle', path: '/generator', color: 'bg-emerald-100 text-emerald-600', desc: 'Equilibrar times' },
   ];
 
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex-1 flex items-center justify-center min-h-[calc(100vh-64px)]">
+          <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
+        </div>
+      </Layout>
+    );
+  }
+
+  // EMPTY STATE: No Groups
+  if (!activeGroup) {
+    return (
+      <Layout>
+        <div className="flex-1 w-full max-w-4xl mx-auto px-4 md:px-10 py-12 flex flex-col items-center justify-center text-center gap-6">
+          <div className="size-24 bg-primary/20 rounded-full flex items-center justify-center text-primary mb-4">
+            <span className="material-symbols-outlined text-5xl">sports_soccer</span>
+          </div>
+
+          <h1 className="text-4xl font-black text-text-main dark:text-white tracking-tight">
+            Bem-vindo ao Pelada Fácil!
+          </h1>
+          <p className="text-xl text-text-muted dark:text-gray-400 max-w-lg">
+            Você ainda não participa de nenhuma pelada. Crie seu próprio grupo para começar a organizar os jogos.
+          </p>
+
+          <button
+            onClick={() => navigate('/create-group')}
+            className="mt-4 bg-primary hover:bg-[#11d821] text-[#052e0a] font-black text-lg h-14 px-8 rounded-full shadow-lg transition-transform hover:scale-105 flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined">add_circle</span>
+            <span>Criar Meu Primeiro Grupo</span>
+          </button>
+
+          <p className="text-sm text-text-muted dark:text-gray-500 mt-8">
+            Ou peça para o administrador do seu grupo te enviar o link de convite.
+          </p>
+        </div>
+      </Layout>
+    );
+  }
+
+  // ACTIVE STATE: Has Group
   return (
     <Layout>
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-10 py-8 flex flex-col gap-8">
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-1 w-full md:w-auto">
+            <div className="flex items-center gap-2 mb-1">
               <span className="bg-primary/20 text-green-800 dark:text-green-300 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Grupo Ativo</span>
+              {activeGroup.role === 'admin' && (
+                <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Admin</span>
+              )}
             </div>
-            <h2 className="text-text-main dark:text-white text-3xl md:text-4xl font-black tracking-tight leading-tight">Peladeiros de Terça</h2>
+
+            {groups.length > 1 ? (
+              <div className="relative group">
+                <select
+                  value={activeGroup.id}
+                  onChange={(e) => setSelectedGroupId(e.target.value)}
+                  className="appearance-none bg-transparent text-text-main dark:text-white text-3xl md:text-4xl font-black tracking-tight leading-tight pr-10 cursor-pointer outline-none border-b-2 border-transparent hover:border-primary/30 transition-colors w-full md:w-auto"
+                >
+                  {groups.map(g => (
+                    <option key={g.id} value={g.id} className="text-base text-black">{g.name}</option>
+                  ))}
+                </select>
+                <div className="absolute top-1/2 right-0 -translate-y-1/2 pointer-events-none text-text-main dark:text-white">
+                  <span className="material-symbols-outlined">expand_more</span>
+                </div>
+              </div>
+            ) : (
+              <h2 className="text-text-main dark:text-white text-3xl md:text-4xl font-black tracking-tight leading-tight">
+                {activeGroup.name}
+              </h2>
+            )}
+
             <p className="text-text-muted dark:text-gray-400 text-base md:text-lg font-normal">Dashboard do Grupo</p>
           </div>
           <button onClick={() => navigate('/roster')} className="flex items-center gap-2 text-text-muted hover:text-primary transition-colors bg-white dark:bg-surface-dark px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -56,7 +144,7 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-8 flex flex-col gap-6">
 
-            {loading ? (
+            {matchesLoading ? (
               <div className="h-64 bg-surface-light dark:bg-surface-dark rounded-2xl animate-pulse flex items-center justify-center">
                 <p className="text-text-muted font-bold">Carregando próxima partida...</p>
               </div>

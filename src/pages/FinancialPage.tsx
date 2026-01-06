@@ -1,116 +1,233 @@
-
-import React, { useState, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
-import { MOCK_PLAYERS } from '../constants';
+import { useMatches } from '../hooks/useMatches';
+import { useMatchDetails } from '../hooks/useMatchDetails';
+import { useAuth } from '../hooks/useAuth';
+import { financialService } from '../services/financialService';
+import { MatchExpense, MatchPayment } from '../types';
 
 const FinancialPage: React.FC = () => {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<'all' | 'paid' | 'pending'>('all');
+  const { id: paramMatchId } = useParams<{ id: string }>();
+  const { session } = useAuth();
 
-  const [playersData, setPlayersData] = useState(() =>
-    MOCK_PLAYERS.map(player => ({
-      ...player,
-      isPaid: player.paid ?? false
-    }))
-  );
+  const { nextMatch } = useMatches();
+  const matchId = paramMatchId || nextMatch?.id;
 
-  const handleMarkAsPaid = (id: string) => {
-    setPlayersData(prev => prev.map(p =>
-      p.id === id ? { ...p, isPaid: true } : p
-    ));
+  const { match } = useMatchDetails(matchId);
+  const isOwner = match?.group?.owner_id === session?.user?.id;
+
+  const [expense, setExpense] = useState<MatchExpense | null>(null);
+  const [payments, setPayments] = useState<MatchPayment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [costInput, setCostInput] = useState('');
+  const [showCostForm, setShowCostForm] = useState(false);
+
+  const loadData = async () => {
+    if (!matchId) return;
+    setLoading(true);
+    try {
+      const [exp, pays] = await Promise.all([
+        financialService.getExpense(matchId),
+        financialService.getPayments(matchId)
+      ]);
+      setExpense(exp);
+      setPayments(pays);
+      if (exp) setCostInput(exp.total_amount.toString());
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const stats = useMemo(() => {
-    const paidCount = playersData.filter(p => p.isPaid).length;
-    const totalCount = playersData.length;
-    const percentage = totalCount > 0 ? Math.round((paidCount / totalCount) * 100) : 0;
-    const totalArrecadado = paidCount * 25;
-    const meta = totalCount * 25;
-    return { paidCount, totalCount, percentage, totalArrecadado, meta };
-  }, [playersData]);
+  useEffect(() => {
+    loadData();
+  }, [matchId]);
 
-  const filteredList = useMemo(() => {
-    if (filter === 'all') return playersData;
-    if (filter === 'paid') return playersData.filter(p => p.isPaid);
-    return playersData.filter(p => !p.isPaid);
-  }, [filter, playersData]);
+  const handleSaveCost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!matchId || !session?.user) return;
+
+    setActionLoading(true);
+    try {
+      await financialService.upsertExpense(matchId, parseFloat(costInput), session.user.id);
+      await loadData();
+      setShowCostForm(false);
+    } catch (err) {
+      alert('Erro ao salvar custo.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleToggle = async (paymentId: string, status: 'PENDING' | 'PAID') => {
+    if (!isOwner) return;
+    // Optimistic Update
+    setPayments(prev => prev.map(p => p.id === paymentId ? { ...p, status: status === 'PAID' ? 'PENDING' : 'PAID' } : p));
+
+    try {
+      await financialService.togglePaymentStatus(paymentId, status);
+      // Silent success
+    } catch (err) {
+      alert('Erro ao atualizar.');
+      loadData(); // Revert
+    }
+  };
+
+  // Calculations
+  const totalAmount = expense?.total_amount || 0;
+  const collected = payments.filter(p => p.status === 'PAID').reduce((acc, p) => acc + Number(p.amount), 0);
+  const pending = payments.filter(p => p.status === 'PENDING').reduce((acc, p) => acc + Number(p.amount), 0);
+  const sharePerPlayer = payments.length > 0 ? payments[0].amount : 0;
+
+  // Render Logic
+  if (loading) return (
+    <Layout>
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-primary"></div>
+      </div>
+    </Layout>
+  );
 
   return (
     <Layout>
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 md:px-10 py-8 space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-3xl font-black tracking-tight dark:text-white">Gestão Financeira</h1>
-            <p className="text-text-muted text-base">Controle quem já pagou a partida de 14/11.</p>
-          </div>
-          <button className="bg-primary text-text-main font-bold h-12 px-6 rounded-full shadow-lg shadow-primary/20 flex items-center gap-2">
-            <span className="material-symbols-outlined">receipt_long</span>
-            Relatório Completo
+      <main className="flex-grow w-full max-w-[1024px] mx-auto px-4 py-8 sm:px-6">
+        <header className="mb-8">
+          <button onClick={() => navigate(-1)} className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-primary transition-colors">
+            <span className="material-symbols-outlined text-lg">arrow_back</span>
+            Voltar
           </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-surface-light dark:bg-surface-dark p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-            <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1">Arrecadado</p>
-            <p className="text-3xl font-black text-primary tracking-tighter">R$ {stats.totalArrecadado.toFixed(2)}</p>
-            <p className="text-xs text-text-muted mt-1">Meta: R$ {stats.meta.toFixed(2)}</p>
-          </div>
-          <div className="bg-surface-light dark:bg-surface-dark p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-            <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1">Pagos</p>
-            <p className="text-3xl font-black dark:text-white tracking-tighter">{stats.paidCount} <span className="text-lg text-text-muted">/ {stats.totalCount}</span></p>
-            <div className="w-full bg-gray-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
-              <div className="bg-primary h-full transition-all duration-500" style={{ width: `${stats.percentage}%` }}></div>
+          <div className="flex justify-between items-end">
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 dark:text-white">Automação Financeira</h1>
+              <p className="text-slate-500">{match?.location}</p>
             </div>
+            {isOwner && expense && (
+              <button
+                onClick={() => setShowCostForm(!showCostForm)}
+                className="text-primary font-bold text-sm hover:underline"
+              >
+                {showCostForm ? 'Cancelar Edição' : 'Editar Custo'}
+              </button>
+            )}
           </div>
-          <div className="bg-surface-light dark:bg-surface-dark p-6 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-            <p className="text-xs font-bold text-text-muted uppercase tracking-widest mb-1">Pendente</p>
-            <p className="text-3xl font-black text-accent-warning tracking-tighter">R$ {(stats.meta - stats.totalArrecadado).toFixed(2)}</p>
-            <p className="text-xs text-text-muted mt-1">{stats.totalCount - stats.paidCount} jogadores restantes</p>
-          </div>
-        </div>
+        </header>
 
-        <div className="flex flex-col gap-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold dark:text-white">Lista de Pagadores</h3>
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-full text-xs font-bold">
-              <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-full transition-all ${filter === 'all' ? 'bg-primary text-text-main shadow-sm' : 'text-text-muted'}`}>Todos</button>
-              <button onClick={() => setFilter('pending')} className={`px-4 py-2 rounded-full transition-all ${filter === 'pending' ? 'bg-accent-warning text-white shadow-sm' : 'text-text-muted'}`}>Pendentes</button>
-              <button onClick={() => setFilter('paid')} className={`px-4 py-2 rounded-full transition-all ${filter === 'paid' ? 'bg-green-500 text-white shadow-sm' : 'text-text-muted'}`}>Pagos</button>
-            </div>
+        {/* Empty State / Create Cost */}
+        {(!expense || showCostForm) && (
+          <div className="mb-8 bg-white dark:bg-surface-dark p-6 rounded-2xl border border-dashed border-primary/50 shadow-sm">
+            <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4">
+              {expense ? 'Editar Custo da Partida' : 'Definir Custo Total'}
+            </h3>
+            <form onSubmit={handleSaveCost} className="flex gap-4 items-end">
+              <div className="flex-1">
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Custo Total (R$)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={costInput}
+                  onChange={e => setCostInput(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 font-bold text-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-primary outline-none"
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+              {isOwner ? (
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="bg-primary hover:bg-primary-dark text-slate-900 px-6 py-3 rounded-xl font-bold transition-all shadow-lg disabled:opacity-50"
+                >
+                  {actionLoading ? 'Salvando...' : 'Salvar e Ratear'}
+                </button>
+              ) : (
+                <p className="text-sm text-red-500 font-bold py-3">Apenas o admin define o custo.</p>
+              )}
+            </form>
+            {expense && !showCostForm && <p className="text-xs text-slate-400 mt-2">Isso recalculará o valor para todos os jogadores.</p>}
           </div>
+        )}
 
-          <div className="grid grid-cols-1 gap-3">
-            {filteredList.map(player => (
-              <div key={player.id} className="bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between group hover:border-primary/50 transition-colors shadow-sm">
-                <div className="flex items-center gap-4">
-                  <div className="size-12 rounded-full bg-cover bg-center border-2 border-white dark:border-slate-700 shadow-sm" style={{ backgroundImage: `url(${player.avatar})` }}></div>
-                  <div>
-                    <h4 className="font-bold text-sm dark:text-white">{player.name}</h4>
-                    <p className="text-xs text-text-muted">{player.position} • {player.status}</p>
-                  </div>
+        {/* Dashboard */}
+        {expense && !showCostForm && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              {/* Expected */}
+              <div className="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="flex items-center gap-2 mb-2 text-slate-500">
+                  <span className="material-symbols-outlined">receipt_long</span>
+                  <span className="text-xs font-bold uppercase">Custo Total</span>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="font-bold text-sm dark:text-white">R$ 25,00</p>
-                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${player.isPaid ? 'bg-primary/10 text-primary' : 'bg-accent-warning/10 text-accent-warning'}`}>
-                      {player.isPaid ? 'PAGO' : 'PENDENTE'}
-                    </span>
-                  </div>
-                  {!player.isPaid && (
-                    <button
-                      onClick={() => handleMarkAsPaid(player.id)}
-                      className="size-10 rounded-full bg-primary text-text-main flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-md shadow-primary/20"
-                      title="Registrar Pagamento"
-                    >
-                      <span className="material-symbols-outlined icon-filled">payments</span>
-                    </button>
-                  )}
+                <p className="text-3xl font-black text-slate-800 dark:text-white">R$ {Number(totalAmount).toFixed(2)}</p>
+                <p className="text-xs text-slate-400 mt-1">R$ {Number(sharePerPlayer).toFixed(2)} por jogador</p>
+              </div>
+
+              {/* Collected */}
+              <div className="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm relative overflow-hidden">
+                <div className="flex items-center gap-2 mb-2 text-green-600">
+                  <span className="material-symbols-outlined">savings</span>
+                  <span className="text-xs font-bold uppercase">Pago</span>
+                </div>
+                <p className="text-3xl font-black text-green-600">R$ {collected.toFixed(2)}</p>
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <span className="material-symbols-outlined text-8xl text-green-500">check_circle</span>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+
+              {/* Pending */}
+              <div className="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="flex items-center gap-2 mb-2 text-orange-500">
+                  <span className="material-symbols-outlined">pending</span>
+                  <span className="text-xs font-bold uppercase">A Receber</span>
+                </div>
+                <p className="text-3xl font-black text-orange-500">R$ {pending.toFixed(2)}</p>
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="bg-white dark:bg-surface-dark rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-800/50">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Pagamentos ({payments.length})</h3>
+              </div>
+              <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                {payments.length === 0 && <p className="p-8 text-center text-slate-400">Nenhum jogador aprovado para rateio.</p>}
+                {payments.sort((a, b) => a.status === 'PAID' ? 1 : -1).map(p => (
+                  <div key={p.id} className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm ${p.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'}`}>
+                        {p.profile?.name?.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-800 dark:text-white">{p.profile?.name}</p>
+                        <p className="text-xs text-slate-500">R$ {Number(p.amount).toFixed(2)}</p>
+                      </div>
+                    </div>
+
+                    {isOwner ? (
+                      <button
+                        onClick={() => handleToggle(p.id, p.status)}
+                        className={`px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 transition-all ${p.status === 'PAID'
+                            ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                      >
+                        <span className="material-symbols-outlined text-sm">{p.status === 'PAID' ? 'check' : 'radio_button_unchecked'}</span>
+                        {p.status === 'PAID' ? 'PAGO' : 'MARCAR PAGO'}
+                      </button>
+                    ) : (
+                      <span className={`text-xs font-bold px-3 py-1 rounded-full ${p.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                        {p.status === 'PAID' ? 'PAGO' : 'PENDENTE'}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </main>
     </Layout>
   );

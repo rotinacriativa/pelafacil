@@ -2,8 +2,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
-import { MOCK_PLAYERS } from '../constants';
-import { Player } from '../types';
+// import { MOCK_PLAYERS } from '../constants';
+// import { Player } from '../types';
+
+interface Player {
+  id: string;
+  name: string;
+  position: string;
+  avatar: string;
+}
+const MOCK_PLAYERS: Player[] = [];
 
 interface MatchEvent {
   id: string;
