@@ -20,10 +20,10 @@ const LoginPage: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
+    if (user && !loading) {
       navigate(from, { replace: true });
     }
-  }, [user, navigate, from]);
+  }, [user, navigate, from, loading]);
 
   const getErrorMessage = (error: any) => {
     if (error instanceof Error) {
@@ -58,7 +58,7 @@ const LoginPage: React.FC = () => {
 
     try {
       if (isSignUp) {
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -68,18 +68,32 @@ const LoginPage: React.FC = () => {
           },
         });
         if (signUpError) throw signUpError;
-        // Supabase might require email confirmation depending on settings
-        // If not, it auto-signs in. 'user' effect will handle redirect.
+
+        // Check if email confirmation is required (no session)
+        if (data.user && !data.session) {
+          alert('Conta criada com sucesso! Verifique seu e-mail para confirmar o cadastro.');
+          setIsSignUp(false); // Switch to login mode
+          return;
+        }
+
+        // Specific fix: Only navigate if we have a session
+        if (data.session) {
+          navigate('/profile', { replace: true });
+        }
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (signInError) throw signInError;
+        // Manual redirect for flow control
+        navigate(from, { replace: true });
       }
     } catch (err: any) {
+      console.error('Auth Error:', err);
       setError(getErrorMessage(err));
-      setLoading(false); // Only stop loading on error, let effect handle success redirect
+    } finally {
+      setLoading(false);
     }
   };
 

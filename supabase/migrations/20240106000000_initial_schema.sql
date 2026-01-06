@@ -479,3 +479,14 @@ CREATE POLICY "Admins Add Players" ON public.match_players FOR INSERT WITH CHECK
   )
 );
 
+
+-- Allow Admins to Update Group Details
+CREATE POLICY "Admins Update Groups" ON public.groups FOR UPDATE USING (
+  EXISTS (
+    SELECT 1 FROM public.group_members gm
+    WHERE gm.group_id = id
+    AND gm.user_id = auth.uid()
+    AND gm.role = 'admin'
+  )
+);
+

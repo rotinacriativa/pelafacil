@@ -1,109 +1,92 @@
+
 import { useEffect, useState } from 'react';
 import { supabase } from '../services/supabase';
-import { useAuth } from './useAuth';
-import { Profile } from '../types';
 
-export interface GroupMember extends Profile {
+// Interface for the joined data
+export interface GroupMemberProfile {
+    user_id: string;
     role: 'admin' | 'member';
     joined_at: string;
+    profile: {
+        name: string;
+        avatar_url: string | null;
+        position: 'Goleiro' | 'Zagueiro' | 'Lateral' | 'Meio-campo' | 'Atacante' | null;
+        rating: number;
+    };
 }
 
-export function useGroupMembers() {
-    const { session } = useAuth();
-    const [members, setMembers] = useState<GroupMember[]>([]);
+export function useGroupMembers(groupId: string | undefined) {
+    const [members, setMembers] = useState<GroupMemberProfile[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (session?.user) {
-            fetchMembers();
-        }
-    }, [session]);
+    const fetchMembers = async () => {
+        if (!groupId) return;
 
-    async function fetchMembers() {
         try {
             setLoading(true);
-
-            // 1. Find the user's primary group (owned by them)
-            // For MVP, we assume the user manages their own group.
-            const { data: groups } = await supabase
-                .from('groups')
-                .select('id')
-                .eq('owner_id', session?.user.id)
-                .limit(1);
-
-            if (!groups?.length) {
-                setMembers([]);
-                return;
-            }
-
-            const groupId = groups[0].id;
-
-            // 2. Fetch members of this group
             const { data, error } = await supabase
                 .from('group_members')
                 .select(`
+                    user_id,
                     role,
                     joined_at,
-                    user:profiles (
-                        id,
+                    position,
+                    rating,
+                    profile:profiles (
                         name,
-                        avatar_url,
-                        position,
-                        rating
+                        avatar_url
                     )
                 `)
                 .eq('group_id', groupId);
 
             if (error) throw error;
 
-            // Flatten structure
-            const formattedMembers: GroupMember[] = data.map((item: any) => ({
-                id: item.user.id,
-                name: item.user.name,
-                avatar_url: item.user.avatar_url,
-                position: item.user.position || 'Meia', // Default fallback
-                rating: item.user.rating || 5.0,
+            console.log('Fetched members:', data); // Debug
+
+            // Cast data to expected shape, handling overrides
+            const formattedMembers = data.map((item: any) => ({
+                user_id: item.user_id,
                 role: item.role,
-                joined_at: item.joined_at
+                joined_at: item.joined_at,
+                profile: {
+                    name: item.profile.name,
+                    avatar_url: item.profile.avatar_url,
+                    // Prefer group-specific position/rating, fallback to profile (though we are moving away from profile stats)
+                    position: item.position || null, // Default to null if not set in group
+                    rating: item.rating || 5.0
+                }
             }));
 
             setMembers(formattedMembers);
-
-        } catch (error) {
-            console.error('Error fetching group members:', error);
+        } catch (err: any) {
+            console.error('Error fetching group members:', err);
+            setError(err.message);
         } finally {
             setLoading(false);
         }
-    }
+    };
 
-    async function removeMember(memberId: string) {
-        // Logic to remove from group_members
-        // For now, let's implemented a basic delete
+    const updateMember = async (userId: string, updates: { position?: string | null; rating?: number; role?: 'admin' | 'member' }) => {
+        if (!groupId) return;
         try {
-            const { data: groups } = await supabase
-                .from('groups')
-                .select('id')
-                .eq('owner_id', session?.user.id)
-                .limit(1);
-
-            if (!groups?.length) return;
-            const groupId = groups[0].id;
-
             const { error } = await supabase
                 .from('group_members')
-                .delete()
+                .update(updates)
                 .eq('group_id', groupId)
-                .eq('user_id', memberId);
+                .eq('user_id', userId);
 
             if (error) throw error;
-
-            setMembers(prev => prev.filter(m => m.id !== memberId));
-            return true;
-        } catch (error) {
-            console.error('Error removing member', error);
-            return false;
+            await fetchMembers(); // Refresh list
+        } catch (err: any) {
+            console.error('Error updating member:', err);
+            throw err;
         }
-    }
+    };
 
-    return { members, loading, removeMember, refetch: fetchMembers };
+    useEffect(() => {
+        fetchMembers();
+    }, [groupId]);
+
+    return { members, loading, error, refreshMembers: fetchMembers, updateMember };
 }

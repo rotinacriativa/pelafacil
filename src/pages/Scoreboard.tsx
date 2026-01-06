@@ -5,14 +5,6 @@ import Layout from '../components/layout/Layout';
 // import { MOCK_PLAYERS } from '../constants';
 // import { Player } from '../types';
 
-interface Player {
-  id: string;
-  name: string;
-  position: string;
-  avatar: string;
-}
-const MOCK_PLAYERS: Player[] = [];
-
 interface MatchEvent {
   id: string;
   type: 'goal';
@@ -22,26 +14,109 @@ interface MatchEvent {
   time: string;
 }
 
+import { useParams } from 'react-router-dom';
+import { supabase } from '../services/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { useMatches } from '../hooks/useMatches';
+
+interface DatabasePlayer {
+  user_id: string;
+  team: 'A' | 'B' | null;
+  profile: {
+    id: string;
+    name: string;
+    position: string | null;
+    avatar_url: string | null;
+  };
+}
+
 const Scoreboard: React.FC = () => {
+  const { matchId } = useParams<{ matchId: string }>();
   const navigate = useNavigate();
+  const { session } = useAuth();
+  const { matches, loading: matchesLoading } = useMatches(); // Use the hook
+
+  // If no match selected, show selection screen
+  if (!matchId) {
+    return (
+      <Layout>
+        <main className="flex-1 flex flex-col items-center py-8 px-4 sm:px-6 w-full max-w-4xl mx-auto gap-8">
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white">Escolha uma Partida</h1>
+          <div className="grid grid-cols-1 w-full gap-4">
+            {matches.filter(m => m.status === 'scheduled' || m.status === 'ongoing').map(match => (
+              <div key={match.id} onClick={() => navigate(`/match/${match.id}/scoreboard`)} className="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-primary cursor-pointer transition-all shadow-sm flex justify-between items-center group">
+                <div>
+                  <p className="font-bold text-lg dark:text-white">{match.location}</p>
+                  <p className="text-sm text-slate-500">{new Date(match.date_time).toLocaleString()}</p>
+                </div>
+                <span className="material-symbols-outlined text-primary text-3xl group-hover:scale-110 transition-transform">arrow_forward_ios</span>
+              </div>
+            ))}
+            {matches.length === 0 && !matchesLoading && (
+              <p className="text-center text-slate-500">Nenhuma partida agendada.</p>
+            )}
+          </div>
+        </main>
+      </Layout>
+    );
+  }
+
+  // Timer State...
   const [minutes, setMinutes] = useState(0);
   const [seconds, setSeconds] = useState(0);
   const [isActive, setIsActive] = useState(false);
   const [period, setPeriod] = useState<'1' | '2' | 'break'>('1');
 
+  // Match Data State
+  const [loading, setLoading] = useState(true);
+  const [players, setPlayers] = useState<DatabasePlayer[]>([]);
   const [events, setEvents] = useState<MatchEvent[]>([]);
+
+  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isMVPModalOpen, setIsMVPModalOpen] = useState(false); // NEW
+  const [mvpPlayerId, setMvpPlayerId] = useState<string | null>(null); // NEW
   const [modalType, setModalType] = useState<'A' | 'B' | null>(null);
   const [step, setStep] = useState<'scorer' | 'assist'>('scorer');
-  const [tempEvent, setTempEvent] = useState<{ scorer?: Player; assist?: Player }>({});
+  const [tempEvent, setTempEvent] = useState<{ scorer?: DatabasePlayer; assist?: DatabasePlayer }>({});
 
-  const teamA = useMemo(() => MOCK_PLAYERS.slice(0, 10), []);
-  const teamB = useMemo(() => MOCK_PLAYERS.slice(10, 20), []);
+  // Fetch Players on Mount
+  useEffect(() => {
+    if (matchId) {
+      fetchMatchPlayers();
+    }
+  }, [matchId]);
+
+  const fetchMatchPlayers = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('match_players')
+        .select(`
+                    user_id,
+                    team,
+                    profile:profiles(id, name, position, avatar_url)
+                `)
+        .eq('match_id', matchId)
+        .in('status', ['confirmed', 'paid']); // Only active players
+
+      if (error) throw error;
+      setPlayers(data as any || []);
+    } catch (error) {
+      console.error('Error fetching scoreboard players:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const teamA = useMemo(() => players.filter(p => p.team === 'A'), [players]);
+  const teamB = useMemo(() => players.filter(p => p.team === 'B'), [players]);
 
   const scoreA = events.filter(e => e.team === 'A').length;
   const scoreB = events.filter(e => e.team === 'B').length;
 
+  // Timer Logic
   useEffect(() => {
     let interval: number | undefined;
     if (isActive) {
@@ -65,19 +140,19 @@ const Scoreboard: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const selectScorer = (player: Player) => {
+  const selectScorer = (player: DatabasePlayer) => {
     setTempEvent({ scorer: player });
     setStep('assist');
   };
 
-  const confirmEvent = (assistPlayer?: Player) => {
+  const confirmEvent = (assistPlayer?: DatabasePlayer) => {
     if (!tempEvent.scorer || !modalType) return;
 
     const newEvent: MatchEvent = {
       id: Math.random().toString(36).substr(2, 9),
       type: 'goal',
-      scorerId: tempEvent.scorer.id,
-      assistId: assistPlayer?.id,
+      scorerId: tempEvent.scorer.user_id,
+      assistId: assistPlayer?.user_id,
       team: modalType,
       time: `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
     };
@@ -100,6 +175,70 @@ const Scoreboard: React.FC = () => {
     handleResetTimer();
     setEvents([]);
     setIsResetModalOpen(false);
+  };
+
+  // Save Stats to Database
+  const saveMatchData = async () => {
+    if (!matchId) return;
+
+    try {
+      // Aggregate Stats
+      const statsMap = new Map<string, { goals: number; assists: number }>();
+
+      // Initialize all players with 0
+      players.forEach(p => {
+        statsMap.set(p.user_id, { goals: 0, assists: 0 });
+      });
+
+      // Calculate totals
+      events.forEach(e => {
+        const scorer = statsMap.get(e.scorerId);
+        if (scorer) scorer.goals += 1;
+
+        if (e.assistId) {
+          const assist = statsMap.get(e.assistId);
+          if (assist) assist.assists += 1;
+        }
+      });
+
+      // Prepare Payload
+      const statsPayload = Array.from(statsMap.entries()).map(([userId, stats]) => ({
+        match_id: matchId,
+        user_id: userId,
+        goals: stats.goals,
+        assists: stats.assists,
+        rating: Number((6.0 + (stats.goals * 1.0) + (stats.assists * 0.5)).toFixed(1)),
+        mvp: userId === mvpPlayerId // NEW logic
+      }));
+
+      // Insert into match_stats
+      const { error: statsError } = await supabase
+        .from('match_stats')
+        .upsert(statsPayload);
+
+      if (statsError) throw statsError;
+
+      // Update Match Status
+      const { error: matchError } = await supabase
+        .from('matches')
+        .update({ status: 'finished' })
+        .eq('id', matchId);
+
+      if (matchError) throw matchError;
+
+      alert('Partida finalizada e craque eleito! 🏆');
+      navigate(-1); // Go back
+
+    } catch (error) {
+      console.error('Error saving stats:', error);
+      alert('Erro ao salvar estatísticas. Tente novamente.');
+    }
+  };
+
+  const handleFinishMatch = () => {
+    if (window.confirm('Deseja finalizar a partida?')) {
+      setIsMVPModalOpen(true);
+    }
   };
 
   return (
@@ -220,8 +359,8 @@ const Scoreboard: React.FC = () => {
           <div className="grid grid-cols-1 gap-4">
             {events.length > 0 ? (
               events.map((event) => {
-                const scorer = MOCK_PLAYERS.find(p => p.id === event.scorerId);
-                const assist = event.assistId ? MOCK_PLAYERS.find(p => p.id === event.assistId) : null;
+                const scorer = players.find(p => p.user_id === event.scorerId);
+                const assist = event.assistId ? players.find(p => p.user_id === event.assistId) : null;
 
                 return (
                   <div key={event.id} className="bg-white dark:bg-surface-dark p-5 rounded-3xl border border-slate-100 dark:border-slate-800 flex items-center justify-between group animate-in fade-in slide-in-from-bottom-2 duration-300 shadow-sm hover:border-primary/50 transition-colors">
@@ -231,11 +370,11 @@ const Scoreboard: React.FC = () => {
                         {event.time}
                       </div>
                       <div className="flex items-center gap-4">
-                        <div className="size-12 rounded-full bg-cover bg-center border-2 border-slate-50 dark:border-slate-700 shadow-sm" style={{ backgroundImage: `url(${scorer?.avatar})` }}></div>
+                        <div className="size-12 rounded-full bg-cover bg-center border-2 border-slate-50 dark:border-slate-700 shadow-sm" style={{ backgroundImage: `url(${scorer?.profile.avatar_url})` }}></div>
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="material-symbols-outlined text-primary text-xl icon-filled">sports_soccer</span>
-                            <p className="font-black text-lg dark:text-white">{scorer?.name}</p>
+                            <p className="font-black text-lg dark:text-white">{scorer?.profile.name}</p>
                             <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${event.team === 'A' ? 'bg-primary text-text-main' : 'bg-orange-500 text-white'}`}>
                               {event.team === 'A' ? 'Sem Colete' : 'Com Colete'}
                             </span>
@@ -243,7 +382,7 @@ const Scoreboard: React.FC = () => {
                           {assist && (
                             <div className="flex items-center gap-2 mt-1 opacity-70">
                               <span className="material-symbols-outlined text-sm">handshake</span>
-                              <p className="text-xs font-bold">Assistência: <span className="dark:text-white">{assist.name}</span></p>
+                              <p className="text-xs font-bold">Assistência: <span className="dark:text-white">{assist.profile.name}</span></p>
                             </div>
                           )}
                         </div>
@@ -270,13 +409,34 @@ const Scoreboard: React.FC = () => {
         </section>
 
         <div className="flex flex-col items-center gap-4">
-          <button
-            onClick={() => navigate('/stats')}
-            className="group flex items-center gap-3 px-10 py-5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-lg hover:scale-105 transition-all shadow-xl active:scale-95"
-          >
-            <span className="material-symbols-outlined icon-filled">sports_and_outdoors</span>
-            Finalizar Partida
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={() => {
+                const text = `🏆 *Fim de Jogo! - ${matchId}*\n\n` +
+                  `🏁 *Placar Final*\n` +
+                  `🎽 Sem Colete ${scoreA} x ${scoreB} Com Colete 👕\n\n` +
+                  `⚽ *Gols*\n` +
+                  events.map(e => {
+                    const p = players.find(p => p.user_id === e.scorerId);
+                    return `• ${p?.profile.name || 'Desconhecido'} (${e.team === 'A' ? 'Sem Colete' : 'Com Colete'}) - ${e.time}`;
+                  }).join('\n') +
+                  `\n\n_Registrado no PeladaApp_`;
+                window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+              }}
+              className="group flex items-center gap-3 px-8 py-5 rounded-full bg-[#25D366] text-white font-black text-lg hover:bg-[#128C7E] transition-all shadow-xl active:scale-95"
+            >
+              <span className="text-2xl">📱</span>
+              Compartilhar Resultado
+            </button>
+
+            <button
+              onClick={handleFinishMatch}
+              className="group flex items-center gap-3 px-10 py-5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-lg hover:scale-105 transition-all shadow-xl active:scale-95"
+            >
+              <span className="material-symbols-outlined icon-filled">sports_and_outdoors</span>
+              Finalizar Partida
+            </button>
+          </div>
           <p className="text-[10px] font-bold text-text-muted uppercase tracking-[0.2em]">As estatísticas serão salvas no histórico do grupo</p>
         </div>
       </main>
@@ -304,18 +464,18 @@ const Scoreboard: React.FC = () => {
 
             <div className="p-6 max-h-[50vh] overflow-y-auto scrollbar-hide grid grid-cols-1 gap-2">
               {(modalType === 'A' ? teamA : teamB).map((player) => {
-                if (step === 'assist' && player.id === tempEvent.scorer?.id) return null;
+                if (step === 'assist' && player.user_id === tempEvent.scorer?.user_id) return null;
 
                 return (
                   <button
-                    key={player.id}
+                    key={player.user_id}
                     onClick={() => step === 'scorer' ? selectScorer(player) : confirmEvent(player)}
                     className="w-full flex items-center gap-4 p-4 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 border border-transparent hover:border-primary/30 transition-all text-left group"
                   >
-                    <div className="size-14 rounded-full bg-cover bg-center border-2 border-white dark:border-slate-700 shadow-md" style={{ backgroundImage: `url(${player.avatar})` }}></div>
+                    <div className="size-14 rounded-full bg-cover bg-center border-2 border-white dark:border-slate-700 shadow-md" style={{ backgroundImage: `url(${player.profile.avatar_url})` }}></div>
                     <div className="flex-1">
-                      <p className="font-black text-lg dark:text-white leading-none mb-1 group-hover:text-primary transition-colors">{player.name}</p>
-                      <p className="text-xs text-text-muted font-bold uppercase tracking-wider">{player.position}</p>
+                      <p className="font-black text-lg dark:text-white leading-none mb-1 group-hover:text-primary transition-colors">{player.profile.name}</p>
+                      <p className="text-xs text-text-muted font-bold uppercase tracking-wider">{player.profile.position || 'Jogador'}</p>
                     </div>
                     <span className="material-symbols-outlined text-slate-200 group-hover:text-primary transition-all text-3xl">add_circle</span>
                   </button>
@@ -331,6 +491,60 @@ const Scoreboard: React.FC = () => {
                   GOL INDIVIDUAL / SEM ASSISTÊNCIA
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MVP Voting Modal */}
+      {isMVPModalOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-2xl bg-white dark:bg-surface-dark rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-8 border-b border-slate-100 dark:border-slate-800 text-center">
+              <h3 className="text-3xl font-black dark:text-white tracking-tight flex items-center justify-center gap-2">
+                <span className="text-4xl">👑</span>
+                Quem foi o Craque?
+              </h3>
+              <p className="text-text-muted mt-2 font-medium">Eleja o melhor jogador da partida para ganhar a medalha de MVP!</p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[...teamA, ...teamB].map(player => (
+                <button
+                  key={player.user_id}
+                  onClick={() => setMvpPlayerId(player.user_id)}
+                  className={`flex items-center gap-4 p-3 rounded-2xl border-2 transition-all ${mvpPlayerId === player.user_id
+                      ? 'border-primary bg-primary/10'
+                      : 'border-slate-100 dark:border-slate-800 hover:border-primary/50'
+                    }`}
+                >
+                  <div className="size-12 rounded-full bg-cover bg-center border-2 border-white dark:border-slate-700 shadow-sm" style={{ backgroundImage: `url(${player.profile.avatar_url})` }}></div>
+                  <div className="text-left">
+                    <p className={`font-bold ${mvpPlayerId === player.user_id ? 'text-primary' : 'dark:text-white'}`}>{player.profile.name}</p>
+                    <p className="text-xs text-text-muted uppercase font-bold">{player.team === 'A' ? 'Sem Colete' : 'Com Colete'}</p>
+                  </div>
+                  {mvpPlayerId === player.user_id && (
+                    <span className="material-symbols-outlined text-primary ml-auto icon-filled">check_circle</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3 bg-slate-50 dark:bg-slate-900/50">
+              <button
+                onClick={saveMatchData}
+                disabled={!mvpPlayerId}
+                className="w-full py-4 rounded-xl bg-gradient-to-r from-yellow-400 to-orange-500 text-white font-black text-xl shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              >
+                CONFIRMAR CRAQUE & FINALIZAR
+                <span className="material-symbols-outlined icon-filled">emoji_events</span>
+              </button>
+              <button
+                onClick={() => setIsMVPModalOpen(false)}
+                className="text-sm font-bold text-text-muted hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
+                Cancelar
+              </button>
             </div>
           </div>
         </div>

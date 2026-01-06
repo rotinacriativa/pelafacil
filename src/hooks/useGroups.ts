@@ -71,5 +71,21 @@ export function useGroups() {
         fetchGroups();
     }, [fetchGroups]);
 
-    return { groups, loading, error, refreshGroups: fetchGroups };
+    const updateGroup = async (id: string, updates: Partial<Group>) => {
+        try {
+            const { error } = await supabase
+                .from('groups')
+                .update(updates)
+                .eq('id', id);
+
+            if (error) throw error;
+            await fetchGroups(); // Refresh list
+            return { error: null };
+        } catch (err: any) {
+            console.error('Error updating group:', err);
+            return { error: err.message };
+        }
+    };
+
+    return { groups, loading, error, refreshGroups: fetchGroups, updateGroup };
 }

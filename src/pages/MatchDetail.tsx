@@ -225,6 +225,15 @@ const MatchDetail: React.FC = () => {
                   <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-1 font-medium">
                     {match.user_status === 'requested' ? 'Aguardando aprovação do organizador.' : 'O organizador aprovará seu pedido em breve.'}
                   </p>
+
+                  {/* Scoreboard Link */}
+                  <button
+                    onClick={() => navigate(`/match/${match.id}/scoreboard`)}
+                    className="w-full flex items-center justify-center h-12 text-base font-bold text-gray-600 dark:text-gray-300 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full transition-all gap-2"
+                  >
+                    <span className="material-symbols-outlined icon-filled">scoreboard</span>
+                    Abrir Placar ao Vivo
+                  </button>
                 </div>
               </div>
             </div>

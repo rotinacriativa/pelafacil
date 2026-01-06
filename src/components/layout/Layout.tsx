@@ -41,11 +41,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                     </span>
                                 )}
                             </Link>
-                            { /* Phase 2 Features - Hidden for MVP
                             <Link className={`${isActive('/generator') ? 'text-primary font-bold' : 'text-text-main dark:text-gray-200 hover:text-primary transition-colors'}`} to="/generator">Sorteio</Link>
-                            <Link className={`${isActive('/scoreboard') ? 'text-primary font-bold' : 'text-text-main dark:text-gray-200 hover:text-primary transition-colors'}`} to="/scoreboard">Placar</Link>
+                            {/* <Link className={`${isActive('/scoreboard') ? 'text-primary font-bold' : 'text-text-main dark:text-gray-200 hover:text-primary transition-colors'}`} to="/scoreboard">Placar</Link> */}
                             <Link className={`${isActive('/stats') ? 'text-primary font-bold ' : 'text-text-main dark:text-gray-200 hover:text-primary transition-colors'}`} to="/stats">Estatísticas</Link>
-                            */ }
                         </nav>
                         <div className="flex items-center gap-4">
                             <button

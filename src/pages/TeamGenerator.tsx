@@ -102,16 +102,34 @@ const TeamGenerator: React.FC = () => {
             </p>
           </div>
 
-          {isOwner && (
-            <button
-              onClick={handleGenerate}
-              disabled={generating}
-              className="bg-primary hover:bg-primary-dark text-slate-900 px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="material-symbols-outlined">{hasTeams ? 'refresh' : 'shuffle'}</span>
-              {generating ? 'Gerando...' : (hasTeams ? 'Regerar Times' : 'Gerar Times')}
-            </button>
-          )}
+          <div className="flex gap-2">
+            {hasTeams && (
+              <button
+                onClick={() => {
+                  const text = `⚽ *Times Definidos - ${match?.location}*\n\n` +
+                    `🎽 *Time A (Colete)*\n${team1.map(p => `• ${p.profile.name}`).join('\n')}\n\n` +
+                    `👕 *Time B (Sem Colete)*\n${team2.map(p => `• ${p.profile.name}`).join('\n')}\n\n` +
+                    `_Gerado pelo PeladaApp_`;
+                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                }}
+                className="bg-[#25D366] hover:bg-[#128C7E] text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-[#25D366]/20 flex items-center gap-2"
+              >
+                <span className="text-xl">📱</span>
+                <span className="hidden sm:inline">No Zap</span>
+              </button>
+            )}
+
+            {isOwner && (
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="bg-primary hover:bg-primary-dark text-slate-900 px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="material-symbols-outlined">{hasTeams ? 'refresh' : 'shuffle'}</span>
+                {generating ? 'Gerando...' : (hasTeams ? 'Regerar' : 'Gerar')}
+              </button>
+            )}
+          </div>
         </div>
 
         {!match && !loading && (

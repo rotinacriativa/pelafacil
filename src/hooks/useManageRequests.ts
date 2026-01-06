@@ -9,6 +9,9 @@ export interface ExtendedRequest extends MatchPlayer {
         id: string;
         location: string;
         date_time: string;
+        group?: {
+            name: string;
+        };
     };
 }
 
@@ -59,8 +62,7 @@ export function useManageRequests() {
                 .from('match_players')
                 .select(`
                     *,
-                    profile:profiles(*),
-                    match:matches(id, location, date_time)
+                    match:matches(id, location, date_time, group:groups(name))
                 `)
                 .in('match_id', matchIds)
                 .eq('status', 'requested')

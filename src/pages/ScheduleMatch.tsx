@@ -129,9 +129,71 @@ const ScheduleMatch: React.FC = () => {
           <h1 className="text-slate-900 dark:text-white text-3xl md:text-5xl font-black leading-tight tracking-[-0.033em]">
             Agendar Nova Partida
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg font-normal">
+          <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg font-normal mb-4">
             Preencha os dados abaixo para convocar a galera.
           </p>
+
+          <button
+            onClick={async () => {
+              if (loading || !session?.user) return;
+              try {
+                // 1. Get user's groups
+                const { data: groups } = await supabase
+                  .from('groups')
+                  .select('id')
+                  .eq('owner_id', session.user.id);
+
+                if (!groups || groups.length === 0) {
+                  alert('Você ainda não criou nenhuma partida anterior.');
+                  return;
+                }
+
+                const groupIds = groups.map(g => g.id);
+
+                // 2. Get latest match from these groups
+                const { data: matches } = await supabase
+                  .from('matches')
+                  .select('*')
+                  .in('group_id', groupIds)
+                  .order('created_at', { ascending: false })
+                  .limit(1);
+
+                if (matches && matches.length > 0) {
+                  const last = matches[0];
+                  // Fill data
+                  const lastDate = new Date(last.date_time);
+                  // Add 7 days
+                  const nextDate = new Date(lastDate);
+                  nextDate.setDate(lastDate.getDate() + 7);
+
+                  setDate(nextDate.toISOString().split('T')[0]);
+                  // Extract time HH:MM
+                  const timeStr = lastDate.toTimeString().slice(0, 5);
+                  setTime(timeStr); // Or keep last.date_time time part if accurate
+
+                  setLocationName(last.location.split(' - ')[0]); // Simple split
+                  setAddress(last.location.split(' - ')[1] || '');
+                  setPrice(last.price_per_person?.toString() || '');
+                  setSlots(last.max_players || 14);
+                  // Notes not in schema? It was notes state but where is it saved?
+                  // Notes are not in existing schema view, so maybe we skip or it was ignored.
+                  // Looking at code line 64-92, notes is NOT inserted. It's local state only?
+                  // Ah, schema.sql showed matches table... let's check inserts.
+                  // Only location, date, max_players, price, status. No notes in insert.
+                  // So notes are lost. We won't restore them.
+                } else {
+                  alert('Nenhuma partida anterior encontrada.');
+                }
+              } catch (e) {
+                console.error(e);
+                alert('Erro ao carregar partida.');
+              }
+            }}
+            className="self-center md:self-start bg-indigo-100 hover:bg-indigo-200 text-indigo-700 px-5 py-2 rounded-full font-bold text-sm transition-colors flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-[18px]">history</span>
+            Repetir Última Partida (Clonar)
+          </button>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
