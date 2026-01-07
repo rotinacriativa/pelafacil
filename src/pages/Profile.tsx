@@ -31,7 +31,7 @@ const Profile: React.FC = () => {
     // Default State
     const [profile, setProfile] = useState<ProfileData>({
         name: user?.user_metadata?.full_name || '',
-        position: 'Meio-Campo',
+        position: 'Meio-campo',
         dominant_foot: 'Destro',
         shirt_number: 10,
         level: 'Avançado',
@@ -85,7 +85,7 @@ const Profile: React.FC = () => {
             if (data) {
                 setProfile({
                     name: data.name || user?.user_metadata?.full_name || '',
-                    position: data.position || 'Meio-Campo',
+                    position: data.position || 'Meio-campo',
                     dominant_foot: data.dominant_foot || 'Destro',
                     shirt_number: data.shirt_number || 10,
                     level: 'Avançado',
