@@ -63,7 +63,8 @@ const StatsPage: React.FC = () => {
                     assists,
                     rating,
                     match_id,
-                    profiles:user_id (full_name, avatar_url, position)
+                    mvp,
+                    profiles:user_id (name, avatar_url, position)
                 `);
 
             if (statsError) throw statsError;
@@ -93,7 +94,7 @@ const StatsPage: React.FC = () => {
                 const profile = stat.profiles;
                 const current = playersMap.get(userId) || {
                     userId,
-                    name: profile?.full_name || 'Desconhecido',
+                    name: profile?.name || 'Desconhecido',
                     avatarUrl: profile?.avatar_url,
                     position: profile?.position || 'Jogador',
                     goals: 0,
@@ -107,6 +108,10 @@ const StatsPage: React.FC = () => {
                 // Match count is tricky with flat list, we'll increment strictly on row presence 
                 // assuming 1 row per player per match
                 current.matches += 1;
+
+                if (stat.mvp) {
+                    current.mvpCount += 1;
+                }
 
                 // Track global
                 gTotal += stat.goals || 0;
