@@ -49,14 +49,45 @@ const ShareModal: React.FC<ShareModalProps> = ({
                                     readOnly
                                     value={inviteLink}
                                 />
-                                <button className="flex items-center justify-center px-5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-text-secondary cursor-pointer transition-colors border-l border-[#dbe6dc] dark:border-[#2a3e2c]">
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(inviteLink);
+                                        // Ideally show a toast here, but for now simple feedback
+                                        const btn = document.activeElement as HTMLButtonElement;
+                                        if (btn) {
+                                            const originalHTML = btn.innerHTML;
+                                            btn.innerHTML = '<span class="material-symbols-outlined text-lg text-green-600">check</span>';
+                                            setTimeout(() => btn.innerHTML = originalHTML, 2000);
+                                        }
+                                    }}
+                                    className="flex items-center justify-center px-5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-text-secondary cursor-pointer transition-colors border-l border-[#dbe6dc] dark:border-[#2a3e2c]"
+                                    title="Copiar Link"
+                                >
                                     <span className="material-symbols-outlined text-lg">content_copy</span>
                                 </button>
                             </div>
                         </label>
                     </div>
 
-                    <button className="w-full h-12 rounded-full bg-primary hover:bg-primary-hover active:scale-[0.98] transition-all text-[#111812] font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-primary/20 mb-6">
+                    <button
+                        onClick={async () => {
+                            if (navigator.share) {
+                                try {
+                                    await navigator.share({
+                                        title: `Convite para ${groupName}`,
+                                        text: `Vem jogar no ${groupName}! Acesse o link para entrar:`,
+                                        url: inviteLink
+                                    });
+                                } catch (err) {
+                                    console.log('Error sharing:', err);
+                                }
+                            } else {
+                                navigator.clipboard.writeText(inviteLink);
+                                alert('Link copiado para a área de transferência!');
+                            }
+                        }}
+                        className="w-full h-12 rounded-full bg-primary hover:bg-primary-hover active:scale-[0.98] transition-all text-[#111812] font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-primary/20 mb-6"
+                    >
                         <span className="material-symbols-outlined filled">share</span>
                         <span>Compartilhar Link</span>
                     </button>
@@ -67,10 +98,16 @@ const ShareModal: React.FC<ShareModalProps> = ({
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 w-full">
-                        <button className="flex items-center justify-center gap-2 h-11 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] dark:text-[#25D366] font-bold transition-colors text-sm">
+                        <button
+                            onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`Vem jogar no ${groupName}! ⚽\nAcesse o link para entrar: ${inviteLink}`)}`, '_blank')}
+                            className="flex items-center justify-center gap-2 h-11 rounded-xl bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#128C7E] dark:text-[#25D366] font-bold transition-colors text-sm"
+                        >
                             <span className="material-symbols-outlined text-[18px]">chat</span><span>WhatsApp</span>
                         </button>
-                        <button className="flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0088cc]/10 hover:bg-[#0088cc]/20 text-[#0088cc] dark:text-[#33aadd] font-bold transition-colors text-sm">
+                        <button
+                            onClick={() => window.open(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(`Vem jogar no ${groupName}! ⚽`)}`, '_blank')}
+                            className="flex items-center justify-center gap-2 h-11 rounded-xl bg-[#0088cc]/10 hover:bg-[#0088cc]/20 text-[#0088cc] dark:text-[#33aadd] font-bold transition-colors text-sm"
+                        >
                             <span className="material-symbols-outlined text-[18px]">send</span><span>Telegram</span>
                         </button>
                     </div>
