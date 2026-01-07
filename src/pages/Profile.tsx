@@ -230,7 +230,7 @@ const Profile: React.FC = () => {
                                                 <input
                                                     value={profile.name}
                                                     onChange={e => setProfile({ ...profile, name: e.target.value })}
-                                                    className="text-3xl font-black text-[#111812] dark:text-white bg-transparent border-b-2 border-primary outline-none w-full md:w-auto"
+                                                    className="text-3xl font-black text-[#111812] dark:text-white bg-white dark:bg-[#1a2d1d] border border-gray-200 dark:border-gray-700 outline-none w-full md:w-auto rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
                                                     placeholder="Seu Nome"
                                                 />
                                             </div>
@@ -252,7 +252,8 @@ const Profile: React.FC = () => {
                                                     <input
                                                         value={profile.phone}
                                                         onChange={e => setProfile({ ...profile, phone: e.target.value })}
-                                                        className="bg-transparent border-b border-primary outline-none w-32"
+                                                        className="bg-white dark:bg-[#1a2d1d] border border-gray-200 dark:border-gray-700 outline-none w-40 rounded-lg px-3 py-1.5 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
+                                                        placeholder="(00) 00000-0000"
                                                     />
                                                 ) : profile.phone}
                                             </span>
@@ -262,7 +263,8 @@ const Profile: React.FC = () => {
                                                     <input
                                                         value={profile.city}
                                                         onChange={e => setProfile({ ...profile, city: e.target.value })}
-                                                        className="bg-transparent border-b border-primary outline-none w-32"
+                                                        className="bg-white dark:bg-[#1a2d1d] border border-gray-200 dark:border-gray-700 outline-none w-40 rounded-lg px-3 py-1.5 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-sm"
+                                                        placeholder="Sua Cidade"
                                                     />
                                                 ) : profile.city}
                                             </span>
