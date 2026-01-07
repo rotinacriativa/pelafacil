@@ -3,6 +3,13 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 const LandingPage: React.FC = () => {
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="bg-background-light dark:bg-background-dark font-display text-text-main antialiased selection:bg-primary selection:text-text-main overflow-x-hidden transition-colors duration-200">
       <div className="relative flex h-auto min-h-screen w-full flex-col">
@@ -16,8 +23,8 @@ const LandingPage: React.FC = () => {
               <h2 className="text-lg font-bold leading-tight tracking-[-0.015em]">PelaFacil</h2>
             </div>
             <nav className="hidden md:flex items-center gap-8">
-              <a className="text-sm font-medium hover:text-primary transition-colors dark:text-gray-200" href="#features">Como funciona</a>
-              <a className="text-sm font-medium hover:text-primary transition-colors dark:text-gray-200" href="#benefits">Recursos</a>
+              <button onClick={() => scrollToSection('features')} className="text-sm font-medium hover:text-primary transition-colors dark:text-gray-200 cursor-pointer bg-transparent border-none">Como funciona</button>
+              <button onClick={() => scrollToSection('benefits')} className="text-sm font-medium hover:text-primary transition-colors dark:text-gray-200 cursor-pointer bg-transparent border-none">Recursos</button>
               <Link className="text-sm font-medium hover:text-primary transition-colors dark:text-gray-200" to="/login">Login</Link>
             </nav>
             <div className="flex items-center gap-4">
@@ -47,7 +54,7 @@ const LandingPage: React.FC = () => {
                   <Link to="/create-group" className="flex min-w-[160px] cursor-pointer items-center justify-center rounded-lg h-12 px-6 bg-primary hover:bg-[#0fd620] text-text-main text-base font-bold transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5">
                     Criar Grupo Grátis
                   </Link>
-                  <button className="flex min-w-[160px] cursor-pointer items-center justify-center rounded-lg h-12 px-6 bg-[#e7f3e8] hover:bg-[#d6ebd8] dark:bg-white/10 dark:hover:bg-white/20 text-text-main dark:text-white text-base font-bold transition-all">
+                  <button onClick={() => scrollToSection('features')} className="flex min-w-[160px] cursor-pointer items-center justify-center rounded-lg h-12 px-6 bg-[#e7f3e8] hover:bg-[#d6ebd8] dark:bg-white/10 dark:hover:bg-white/20 text-text-main dark:text-white text-base font-bold transition-all">
                     <span className="material-symbols-outlined mr-2 text-[20px]">play_circle</span>
                     Ver como funciona
                   </button>
