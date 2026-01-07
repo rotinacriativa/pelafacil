@@ -55,8 +55,9 @@ const GroupSettings: React.FC = () => {
         return true;
     });
 
-    // Local state for Rules (Description)
+    // Local state for Group fields
     const [rules, setRules] = useState('');
+    const [groupName, setGroupName] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const lastLoadedGroupId = React.useRef<string | null>(null);
 
@@ -79,16 +80,19 @@ const GroupSettings: React.FC = () => {
         }
     }, [group, navigate, groupId]);
 
-    const handleSaveRules = async () => {
+    const handleSaveGroup = async () => {
         if (!group) return;
         setIsSaving(true);
         try {
-            const { error } = await updateGroup(group.id, { description: rules });
+            const { error } = await updateGroup(group.id, {
+                name: groupName,
+                description: rules
+            });
             if (error) throw new Error(error);
-            alert('Regras do grupo atualizadas com sucesso!');
+            alert('Configurações do grupo atualizadas com sucesso!');
         } catch (err) {
-            console.error('Error saving rules:', err);
-            alert('Erro ao salvar regras. Tente novamente.');
+            console.error('Error saving group:', err);
+            alert('Erro ao salvar configurações. Tente novamente.');
         } finally {
             setIsSaving(false);
         }
@@ -249,14 +253,26 @@ const GroupSettings: React.FC = () => {
                         <div className="bg-card-light dark:bg-card-dark rounded-2xl p-6 border border-surface-light dark:border-surface-dark shadow-sm sticky top-24">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                    <span className="material-symbols-outlined">gavel</span>
+                                    <span className="material-symbols-outlined">settings</span>
                                 </div>
-                                <h3 className="font-bold text-lg text-text-main dark:text-white">Regras do Grupo</h3>
+                                <h3 className="font-bold text-lg text-text-main dark:text-white">Configurações do Grupo</h3>
                             </div>
-                            <p className="text-sm text-text-secondary dark:text-gray-400 mb-4 leading-relaxed">Defina as regras da pelada para que todos os membros estejam cientes.</p>
-                            <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); handleSaveRules(); }}>
+                            <p className="text-sm text-text-secondary dark:text-gray-400 mb-4 leading-relaxed">Edite o nome e as regras da sua pelada.</p>
+                            <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); handleSaveGroup(); }}>
                                 <div>
-                                    <label className="sr-only" htmlFor="rules">Regras</label>
+                                    <label className="block text-sm font-bold text-text-main dark:text-gray-300 mb-2" htmlFor="groupName">Nome do Grupo</label>
+                                    <input
+                                        className="w-full rounded-xl bg-surface-light dark:bg-surface-dark border-transparent focus:border-primary focus:ring-1 focus:ring-primary text-text-main dark:text-white placeholder-text-secondary dark:placeholder-gray-500 text-sm h-12 px-4"
+                                        id="groupName"
+                                        type="text"
+                                        value={groupName}
+                                        onChange={(e) => setGroupName(e.target.value)}
+                                        placeholder="Ex: Racha dos Amigos"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-text-main dark:text-gray-300 mb-2" htmlFor="rules">Regras / Descrição</label>
                                     <textarea
                                         className="w-full rounded-xl bg-surface-light dark:bg-surface-dark border-transparent focus:border-primary focus:ring-1 focus:ring-primary text-text-main dark:text-white placeholder-text-secondary dark:placeholder-gray-500 text-sm leading-relaxed p-4 min-h-[300px] resize-none scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600"
                                         id="rules"
@@ -271,7 +287,7 @@ const GroupSettings: React.FC = () => {
                                     disabled={isSaving}
                                 >
                                     <span className="material-symbols-outlined">{isSaving ? 'sync' : 'save'}</span>
-                                    {isSaving ? 'Salvando...' : 'Salvar Regras'}
+                                    {isSaving ? 'Salvando...' : 'Salvar Alterações'}
                                 </button>
                             </form>
                         </div>
