@@ -169,7 +169,27 @@ const StatsPage: React.FC = () => {
                                 <span className="font-medium text-sm">2024</span>
                                 <span className="material-symbols-outlined text-slate-500 text-lg">expand_more</span>
                             </button>
-                            <button className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-full hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20">
+                            <button
+                                onClick={async () => {
+                                    const shareData = {
+                                        title: 'Estatísticas da Temporada - Pelada App',
+                                        text: 'Confira as estatísticas da nossa pelada!',
+                                        url: window.location.href
+                                    };
+
+                                    if (navigator.share) {
+                                        try {
+                                            await navigator.share(shareData);
+                                        } catch (err) {
+                                            console.log('Error sharing:', err);
+                                        }
+                                    } else {
+                                        navigator.clipboard.writeText(window.location.href);
+                                        alert('Link copiado para a área de transferência!');
+                                    }
+                                }}
+                                className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-full hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20 active:scale-95"
+                            >
                                 <span className="material-symbols-outlined text-xl">share</span>
                                 <span className="font-bold text-sm">Compartilhar</span>
                             </button>
