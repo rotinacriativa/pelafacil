@@ -88,95 +88,155 @@ const TeamGenerator: React.FC = () => {
   return (
     <Layout>
       <main className="flex-grow w-full max-w-[1024px] mx-auto px-4 py-8 sm:px-6">
-        <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <button onClick={() => navigate(-1)} className="mb-2 flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-primary transition-colors">
-              <span className="material-symbols-outlined text-lg">arrow_back</span>
-              Voltar
-            </button>
-            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight mb-1">
-              Times da Partida
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400 font-medium">
-              {match ? match.location : 'Carregando...'}
-            </p>
-          </div>
+        {/* Page Heading */}
+        <div className="mb-8 text-center sm:text-left">
+          <h1 className="text-text-main dark:text-white text-3xl sm:text-4xl font-black tracking-tight mb-2">Gerador de Times</h1>
+          <p className="text-text-muted dark:text-gray-400 text-base sm:text-lg">Organize uma partida equilibrada com apenas um clique.</p>
+        </div>
 
-          <div className="flex gap-2">
-            {hasTeams && (
-              <button
-                onClick={() => {
-                  const text = `⚽ *Times Definidos - ${match?.location}*\n\n` +
-                    `🎽 *Time A (Colete)*\n${team1.map(p => `• ${p.profile.name}`).join('\n')}\n\n` +
-                    `👕 *Time B (Sem Colete)*\n${team2.map(p => `• ${p.profile.name}`).join('\n')}\n\n` +
-                    `_Gerado pelo PeladaApp_`;
-                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-                }}
-                className="bg-[#25D366] hover:bg-[#128C7E] text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-[#25D366]/20 flex items-center gap-2"
-              >
-                <span className="text-xl">📱</span>
-                <span className="hidden sm:inline">No Zap</span>
-              </button>
-            )}
+        {/* Action Bar & Controls */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-10 bg-surface-light dark:bg-surface-dark p-6 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm">
+          {/* Generate Button */}
+          <button
+            onClick={handleGenerate}
+            disabled={generating}
+            className="w-full md:w-auto flex items-center justify-center gap-3 bg-primary hover:bg-primary-dark text-text-main text-lg font-bold px-8 py-4 rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span className={`material-symbols-outlined text-2xl ${generating ? 'animate-spin' : ''}`}>shuffle</span>
+            <span>{generating ? 'Sorteando...' : 'Sortear Times'}</span>
+          </button>
 
-            {isOwner && (
-              <button
-                onClick={handleGenerate}
-                disabled={generating}
-                className="bg-primary hover:bg-primary-dark text-slate-900 px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span className="material-symbols-outlined">{hasTeams ? 'refresh' : 'shuffle'}</span>
-                {generating ? 'Gerando...' : (hasTeams ? 'Regerar' : 'Gerar')}
-              </button>
-            )}
+          {/* Balance Indicator */}
+          <div className="w-full md:max-w-md flex flex-col gap-2">
+            <div className="flex justify-between items-center text-sm font-bold text-text-main dark:text-white">
+              <span>Equilíbrio da Partida</span>
+              <span className="text-primary">98% (Alto)</span>
+            </div>
+            <div className="h-3 w-full bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden flex">
+              <div className="h-full bg-text-main dark:bg-gray-400 transition-all duration-500" style={{ width: '50%' }}></div>
+              <div className="h-full bg-white dark:bg-gray-500 transition-all duration-500" style={{ width: '50%' }}></div>
+            </div>
+            <div className="flex justify-between text-xs font-medium text-text-muted dark:text-gray-500">
+              <span>Time A</span>
+              <span>Time B</span>
+            </div>
           </div>
         </div>
 
-        {!match && !loading && (
-          <div className="p-10 text-center bg-slate-100 dark:bg-slate-800 rounded-2xl">
-            <p className="text-slate-500">Nenhuma partida selecionada.</p>
+        {/* Teams Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-24">
+          {/* Team A Card */}
+          <div className="flex flex-col bg-surface-light dark:bg-surface-dark rounded-xl border-2 border-transparent hover:border-primary/20 transition-colors shadow-sm overflow-hidden">
+            {/* Header */}
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-gray-50 to-white dark:from-[#1a331d] dark:to-[#152a18]">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-text-main dark:text-white">checkroom</span>
+                  <h3 className="text-text-main dark:text-white text-xl font-bold">Time Coletes</h3>
+                </div>
+                <span className="bg-primary/20 text-primary-dark dark:text-primary text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Time A</span>
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-4xl font-black text-text-main dark:text-white">
+                  {(team1.length * 5)}
+                </span>
+                <span className="text-sm font-medium text-text-muted dark:text-gray-400 mb-1">Pontos de Força</span>
+              </div>
+            </div>
+            {/* Player List */}
+            <div className="p-4 flex flex-col gap-2 min-h-[300px]">
+              {team1.length === 0 && <div className="flex items-center justify-center h-full text-text-muted">Nenhum jogador sorteado</div>}
+              {team1.map(p => (
+                <div key={p.user_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
+                  <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-10 w-10 flex items-center justify-center text-text-main dark:text-white font-bold text-sm overflow-hidden">
+                    {p.profile?.avatar_url ? (
+                      <img src={p.profile.avatar_url} alt={p.profile.name} className="w-full h-full object-cover" />
+                    ) : (
+                      p.profile?.name?.substring(0, 2).toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-text-main dark:text-white">{p.profile?.name}</p>
+                    <p className="text-xs text-text-muted dark:text-gray-400">{p.profile?.position || 'Jogador'}</p>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button className="material-symbols-outlined text-gray-400 text-[18px] cursor-pointer hover:text-primary">swap_vert</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        )}
 
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          {/* Team B Card */}
+          <div className="flex flex-col bg-surface-light dark:bg-surface-dark rounded-xl border-2 border-transparent hover:border-accent/20 transition-colors shadow-sm overflow-hidden">
+            {/* Header */}
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-orange-50 to-white dark:from-[#2a2215] dark:to-[#1a331d]">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-text-main dark:text-white">accessibility_new</span>
+                  <h3 className="text-text-main dark:text-white text-xl font-bold">Time Camisas</h3>
+                </div>
+                <span className="bg-orange-500/20 text-orange-700 dark:text-orange-400 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Time B</span>
+              </div>
+              <div className="flex items-end gap-2">
+                <span className="text-4xl font-black text-text-main dark:text-white">
+                  {(team2.length * 5)}
+                </span>
+                <span className="text-sm font-medium text-text-muted dark:text-gray-400 mb-1">Pontos de Força</span>
+              </div>
+            </div>
+            {/* Player List */}
+            <div className="p-4 flex flex-col gap-2 min-h-[300px]">
+              {team2.length === 0 && <div className="flex items-center justify-center h-full text-text-muted">Nenhum jogador sorteado</div>}
+              {team2.map(p => (
+                <div key={p.user_id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
+                  <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-10 w-10 flex items-center justify-center text-text-main dark:text-white font-bold text-sm overflow-hidden">
+                    {p.profile?.avatar_url ? (
+                      <img src={p.profile.avatar_url} alt={p.profile.name} className="w-full h-full object-cover" />
+                    ) : (
+                      p.profile?.name?.substring(0, 2).toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-text-main dark:text-white">{p.profile?.name}</p>
+                    <p className="text-xs text-text-muted dark:text-gray-400">{p.profile?.position || 'Jogador'}</p>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button className="material-symbols-outlined text-gray-400 text-[18px] cursor-pointer hover:text-primary">swap_vert</button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        ) : (
-          <>
-            {!hasTeams ? (
-              <div className="p-16 text-center bg-slate-50/50 dark:bg-slate-900/50 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                <span className="material-symbols-outlined text-6xl text-slate-300 mb-4">groups</span>
-                <h3 className="text-xl font-bold text-slate-700 dark:text-slate-300 mb-2">Times não definidos</h3>
-                <p className="text-slate-500 max-w-md mx-auto">
-                  {isOwner
-                    ? 'Como organizador, você pode gerar os times aleatoriamente baseando-se nos jogadores confirmados.'
-                    : 'O organizador ainda não definiu os times para esta partida.'}
-                </p>
-                {isOwner && (
-                  <button onClick={handleGenerate} className="mt-6 text-primary font-bold hover:underline">Gerar Agora</button>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <TeamColumn
-                  title="Time 1"
-                  players={team1}
-                  badge="Colete"
-                  colorClass="hover:border-slate-300 dark:hover:border-slate-600"
-                />
-                <TeamColumn
-                  title="Time 2"
-                  players={team2}
-                  badge="Sem Colete"
-                  colorClass="hover:border-orange-300 dark:hover:border-orange-900"
-                />
-              </div>
-            )}
-          </>
-        )}
+        </div>
+
+        {/* Sticky Footer Action */}
+        <div className="fixed bottom-0 left-0 w-full bg-surface-light dark:bg-surface-dark border-t border-gray-100 dark:border-gray-800 p-4 pb-6 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-40">
+          <div className="max-w-[1024px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-text-muted dark:text-gray-400 hidden sm:block">
+              Confira as escalações antes de aprovar a partida.
+            </p>
+            <div className="flex gap-4 w-full sm:w-auto">
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="flex-1 sm:flex-none h-12 px-6 rounded-full border border-gray-300 dark:border-gray-600 text-text-main dark:text-white font-bold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors disabled:opacity-50"
+              >
+                Re-sortear
+              </button>
+              <button
+                onClick={() => navigate(-1)}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 h-12 px-8 rounded-full bg-primary hover:bg-primary-dark text-text-main font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
+              >
+                <span className="material-symbols-outlined">check_circle</span>
+                Aprovar Times
+              </button>
+            </div>
+          </div>
+        </div>
       </main>
-    </Layout>
+
+    </Layout >
   );
 };
 
