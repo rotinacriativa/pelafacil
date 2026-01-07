@@ -5,19 +5,67 @@ import Layout from '../components/layout/Layout';
 import { useMatches } from '../hooks/useMatches';
 import { useGroups } from '../hooks/useGroups';
 import { formatDate, formatTime } from '../utils/format';
+import { supabase } from '../lib/supabase';
 
 const GroupDashboard: React.FC = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const { groups, loading: groupsLoading } = useGroups();
-  const { matches, loading: matchesLoading } = useMatches();
+  const { matches, loading: matchesLoading, refetch: refetchMatches } = useMatches();
 
   const group = groups.find(g => g.id === groupId);
+
+  // Edit Match State
+  const [isEditingMatch, setIsEditingMatch] = React.useState(false);
+  const [isSavingMatch, setIsSavingMatch] = React.useState(false);
+  const [editForm, setEditForm] = React.useState({
+    date: '',
+    time: '',
+    location: ''
+  });
 
   // Find next match for THIS group
   const nextMatch = matches
     .filter(m => m.group_id === groupId && m.status === 'scheduled')
     .sort((a, b) => new Date(a.date_time).getTime() - new Date(b.date_time).getTime())[0];
+
+  const handleEditClick = () => {
+    if (!nextMatch) return;
+    const dateObj = new Date(nextMatch.date_time);
+    setEditForm({
+      date: dateObj.toISOString().split('T')[0],
+      time: dateObj.toTimeString().slice(0, 5),
+      location: nextMatch.location
+    });
+    setIsEditingMatch(true);
+  };
+
+  const handleSaveMatch = async () => {
+    if (!nextMatch) return;
+    try {
+      setIsSavingMatch(true);
+      // Combine date and time
+      const dateTime = new Date(`${editForm.date}T${editForm.time}:00`).toISOString();
+
+      const { error } = await supabase
+        .from('matches')
+        .update({
+          location: editForm.location,
+          date_time: dateTime
+        })
+        .eq('id', nextMatch.id);
+
+      if (error) throw error;
+
+      await refetchMatches();
+      setIsEditingMatch(false);
+    } catch (error) {
+      console.error('Error updating match:', error);
+      alert('Erro ao atualizar partida');
+    } finally {
+      setIsSavingMatch(false);
+    }
+  };
 
   const isLoading = groupsLoading || matchesLoading;
 
@@ -112,7 +160,6 @@ const GroupDashboard: React.FC = () => {
             {nextMatch ? (
               <>
                 <div className="group relative overflow-hidden rounded-2xl bg-surface-light dark:bg-surface-dark shadow-sm border border-slate-100 dark:border-slate-800 transition-all hover:shadow-lg">
-                  {/* ... Match Card UI reused ... */}
                   <div className="absolute top-4 left-4 z-10 flex gap-2">
                     <span className="px-4 py-1.5 rounded-full bg-primary text-text-main text-xs font-bold shadow-sm flex items-center gap-1">
                       <span className="material-symbols-outlined text-sm icon-filled">check_circle</span>
@@ -125,7 +172,18 @@ const GroupDashboard: React.FC = () => {
                     </div>
                     <div className="flex-1 p-6 md:p-8 flex flex-col justify-center gap-4">
                       <div>
-                        <p className="text-primary font-bold text-xs uppercase tracking-wider mb-1">Próxima Partida</p>
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-primary font-bold text-xs uppercase tracking-wider">Próxima Partida</p>
+                          {group.role === 'admin' && (
+                            <button
+                              onClick={handleEditClick}
+                              className="size-6 rounded-full bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
+                              title="Editar data/local"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">edit</span>
+                            </button>
+                          )}
+                        </div>
                         <h3 className="text-text-main dark:text-white text-3xl font-black leading-tight">
                           {formatDate(nextMatch.date_time)} <span className="text-gray-300 dark:text-gray-600 font-light mx-1">|</span> {formatTime(nextMatch.date_time)}
                         </h3>
