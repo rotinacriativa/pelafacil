@@ -300,8 +300,8 @@ const GroupSettings: React.FC = () => {
                                             key={pos}
                                             onClick={() => setEditForm(prev => ({ ...prev, position: pos }))}
                                             className={`h-10 rounded-xl text-sm font-bold border transition-all ${editForm.position === pos
-                                                    ? 'bg-primary border-primary text-text-main'
-                                                    : 'bg-transparent border-surface-light dark:border-surface-dark text-text-secondary dark:text-gray-400 hover:border-primary/50'
+                                                ? 'bg-primary border-primary text-text-main'
+                                                : 'bg-transparent border-surface-light dark:border-surface-dark text-text-secondary dark:text-gray-400 hover:border-primary/50'
                                                 }`}
                                         >
                                             {pos}
@@ -317,7 +317,7 @@ const GroupSettings: React.FC = () => {
                                         <span className="text-2xl font-black text-text-main dark:text-white">{editForm.rating.toFixed(1)}</span>
                                         <div className="flex gap-1">
                                             {[1, 2, 3, 4, 5].map((star) => (
-                                                <span key={star} className={`material-symbols-outlined ${star <= Math.round(editForm.rating) ? 'text-yellow-400 filled' : 'text-gray-300 dark:text-gray-600'}`}>star</span>
+                                                <span key={star} className={`material-symbols-outlined ${star <= Math.round(editForm.rating) ? 'text-yellow-400 icon-filled' : 'text-gray-300 dark:text-gray-600'}`}>star</span>
                                             ))}
                                         </div>
                                     </div>
