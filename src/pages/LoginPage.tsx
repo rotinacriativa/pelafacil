@@ -20,6 +20,33 @@ const LoginPage: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
 
+  // Location States
+  const [uf, setUf] = React.useState('SC');
+  const [cities, setCities] = React.useState<{ id: number, nome: string }[]>([]);
+  const [city, setCity] = React.useState('');
+  const [loadingCities, setLoadingCities] = React.useState(false);
+
+  // Fetch cities when UF changes
+  useEffect(() => {
+    if (!isSignUp) return; // Only fetch if in signup mode
+    const fetchCities = async () => {
+      setLoadingCities(true);
+      try {
+        const response = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
+        const data = await response.json();
+        setCities(data);
+        if (data.length > 0) {
+          setCity(`${data[0].nome}, ${uf}`);
+        }
+      } catch (error) {
+        console.error("Error fetching cities:", error);
+      } finally {
+        setLoadingCities(false);
+      }
+    };
+    fetchCities();
+  }, [uf, isSignUp]);
+
   useEffect(() => {
     if (user && !loading) {
       navigate(from, { replace: true });
@@ -55,6 +82,14 @@ const LoginPage: React.FC = () => {
       setError('A senha deve ter no mínimo 6 caracteres.');
       return;
     }
+    if (isSignUp && (!city || !uf)) {
+      setError('Por favor, selecione seu estado e cidade.');
+      return;
+    }
+    if (isSignUp && (!city || !uf)) {
+      setError('Por favor, selecione seu estado e cidade.');
+      return;
+    }
 
     setLoading(true); // START LOADING
 
@@ -77,6 +112,8 @@ const LoginPage: React.FC = () => {
           options: {
             data: {
               full_name: fullName,
+              city: city, // Already formatted as "City, UF" or just "City" depending on choice, trigger expects it
+              state: uf
             },
           },
         });
