@@ -24,7 +24,9 @@ const Profile: React.FC = () => {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     // Default State
     const [profile, setProfile] = useState<ProfileData>({
@@ -70,7 +72,6 @@ const Profile: React.FC = () => {
     };
 
     const fetchProfile = async () => {
-        // ... (existing fetchProfile logic)
         try {
             setLoading(true);
             const { data, error } = await supabase
@@ -101,7 +102,34 @@ const Profile: React.FC = () => {
         }
     };
 
+    const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        try {
+            setUploading(true);
 
+            if (!event.target.files || event.target.files.length === 0) {
+                throw new Error('Você deve selecionar uma imagem para fazer upload.');
+            }
+
+            const file = event.target.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user?.id}-${Math.random()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+
+            setProfile({ ...profile, avatar_url: data.publicUrl });
+        } catch (error: any) {
+            alert(error.message || 'Erro ao fazer upload da imagem.');
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const handleSignOut = async () => {
         await signOut();
@@ -122,15 +150,16 @@ const Profile: React.FC = () => {
                 city: profile.city,
                 phone: profile.phone,
                 updated_at: new Date(),
+                avatar_url: profile.avatar_url // Save avatar URL too
             };
 
             const { error } = await supabase.from('profiles').upsert(updates);
             if (error) throw error;
 
             setIsEditing(false);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error updating profile:', error);
-            alert('Erro ao salvar perfil.');
+            alert(`Erro ao salvar perfil: ${error.message || 'Erro desconhecido'}`);
         } finally {
             setSaving(false);
         }
@@ -162,13 +191,31 @@ const Profile: React.FC = () => {
                                     <img
                                         alt="User Avatar"
                                         className="w-full h-full object-cover"
-                                        src={profile.avatar_url}
+                                        src={profile.avatar_url || `https://ui-avatars.com/api/?name=${profile.name}&background=random`}
                                     />
                                 </div>
                                 {isEditing && (
-                                    <button className="absolute bottom-2 right-2 bg-white dark:bg-[#223625] p-2 rounded-full shadow-md border border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-primary transition-colors" title="Alterar foto">
-                                        <span className="material-symbols-outlined text-xl">photo_camera</span>
-                                    </button>
+                                    <>
+                                        <button
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={uploading}
+                                            className="absolute bottom-2 right-2 bg-white dark:bg-[#223625] p-2 rounded-full shadow-md border border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:text-primary transition-colors disabled:opacity-50"
+                                            title="Alterar foto"
+                                        >
+                                            {uploading ? (
+                                                <span className="material-symbols-outlined text-xl animate-spin">progress_activity</span>
+                                            ) : (
+                                                <span className="material-symbols-outlined text-xl">photo_camera</span>
+                                            )}
+                                        </button>
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            onChange={uploadAvatar}
+                                            accept="image/*"
+                                            className="hidden"
+                                        />
+                                    </>
                                 )}
                             </div>
                             <div className="flex-1 mt-4 md:mt-0 md:ml-6 text-center md:text-left">
