@@ -1,12 +1,18 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
 const CreateGroup: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+
+  // Edit mode states
+  const [editMode, setEditMode] = useState(false);
+  const [groupId, setGroupId] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const [name, setName] = useState('');
   const [uf, setUf] = useState('SC');
@@ -18,8 +24,44 @@ const CreateGroup: React.FC = () => {
   const [playersPerTeam, setPlayersPerTeam] = useState(7);
   const [description, setDescription] = useState('');
 
+  // Check for edit mode
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const editGroupId = params.get('edit');
+
+    if (editGroupId) {
+      setEditMode(true);
+      setGroupId(editGroupId);
+      loadGroupData(editGroupId);
+    }
+  }, [location.search]);
+
+  // Load group data for editing
+  const loadGroupData = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('groups')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setName(data.name);
+        setDescription(data.description || '');
+        setFieldLocation(data.location || '');
+        // Note: Other fields like gameMode, playersPerTeam might not be stored
+        // If you add those fields to the groups table later, load them here
+      }
+    } catch (err: any) {
+      console.error('Error loading group:', err);
+      setError('Erro ao carregar dados do grupo.');
+    }
+  };
+
   // Fetch cities when UF changes
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchCities = async () => {
       setLoadingCities(true);
       try {
@@ -57,47 +99,64 @@ const CreateGroup: React.FC = () => {
     setError(null);
 
     try {
-      // 1. Create Group
-      const { data: groupData, error: groupError } = await supabase
-        .from('groups')
-        .insert({
-          name,
-          description: description || `${gameMode} - ${city}`,
-          location: fieldLocation,
-          owner_id: user.id
-        })
-        .select()
-        .single();
+      if (editMode && groupId) {
+        // UPDATE existing group
+        const { error: updateError } = await supabase
+          .from('groups')
+          .update({
+            name,
+            description: description || `${gameMode} - ${city}`,
+            location: fieldLocation
+          })
+          .eq('id', groupId);
 
-      if (groupError) throw groupError;
+        if (updateError) throw updateError;
 
-      if (!groupData) throw new Error("Erro ao criar grupo retornado nulo.");
+        // Success feedback
+        setShowSuccess(true);
+        setTimeout(() => {
+          navigate(`/groups/${groupId}`);
+        }, 2000);
+      } else {
+        // INSERT new group
+        const { data: groupData, error: groupError } = await supabase
+          .from('groups')
+          .insert({
+            name,
+            description: description || `${gameMode} - ${city}`,
+            location: fieldLocation,
+            owner_id: user.id
+          })
+          .select()
+          .single();
 
-      // 2. Add Owner as Member (Admin)
-      const { error: memberError } = await supabase
-        .from('group_members')
-        .insert({
-          group_id: groupData.id,
-          user_id: user.id,
-          role: 'admin'
-        });
+        if (groupError) throw groupError;
 
-      if (memberError) {
-        console.error("Error adding admin member:", memberError);
-        alert("Grupo criado, mas houve um erro ao te adicionar como membro. Contate o suporte.");
+        if (!groupData) throw new Error("Erro ao criar grupo retornado nulo.");
+
+        // 2. Add Owner as Member (Admin)
+        const { error: memberError } = await supabase
+          .from('group_members')
+          .insert({
+            group_id: groupData.id,
+            user_id: user.id,
+            role: 'admin'
+          });
+
+        if (memberError) {
+          console.error("Error adding admin member:", memberError);
+          alert("Grupo criado, mas houve um erro ao te adicionar como membro. Contate o suporte.");
+        }
+
+        // Success feedback
+        alert('Grupo criado com sucesso 🎉');
+
+        // Redirect to the new group
+        navigate(`/groups/${groupData.id}`);
       }
-
-      if (error) throw error;
-
-      // Success feedback
-      alert('Grupo criado com sucesso 🎉');
-
-      // Redirect to the new group
-      navigate(`/groups/${groupData.id}`);
-
     } catch (err: any) {
-      console.error("Error creating group:", err);
-      setError(err.message || 'Erro ao criar grupo.');
+      console.error(editMode ? "Error updating group:" : "Error creating group:", err);
+      setError(err.message || (editMode ? 'Erro ao atualizar grupo.' : 'Erro ao criar grupo.'));
     } finally {
       setLoading(false);
     }
@@ -138,10 +197,10 @@ const CreateGroup: React.FC = () => {
         <div className="w-full max-w-3xl">
           <div className="mb-8 text-center sm:text-left">
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-2 text-text-main-light dark:text-white">
-              Vamos começar o jogo!
+              {editMode ? 'Editar Grupo' : 'Vamos começar o jogo!'}
             </h1>
             <p className="text-text-sec-light dark:text-text-sec-dark text-lg font-normal">
-              Crie seu grupo e convoque a galera para a pelada.
+              {editMode ? 'Atualize as informações do seu grupo.' : 'Crie seu grupo e convoque a galera para a pelada.'}
             </p>
           </div>
 
@@ -371,12 +430,12 @@ const CreateGroup: React.FC = () => {
                 {loading ? (
                   <>
                     <div className="size-5 border-2 border-[#052e0a] border-t-transparent rounded-full animate-spin" />
-                    <span>Criando...</span>
+                    <span>{editMode ? 'Salvando...' : 'Criando...'}</span>
                   </>
                 ) : (
                   <>
-                    <span>Criar Grupo</span>
-                    <span className="material-symbols-outlined text-[24px]">arrow_forward</span>
+                    <span>{editMode ? 'Salvar Alterações' : 'Criar Grupo'}</span>
+                    <span className="material-symbols-outlined text-[24px]">{editMode ? 'check' : 'arrow_forward'}</span>
                   </>
                 )}
               </button>
@@ -391,6 +450,21 @@ const CreateGroup: React.FC = () => {
           </form>
         </div>
       </main>
+
+      {/* Success Toast */}
+      {showSuccess && (
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 animate-[slideDown_0.3s_ease-out]">
+          <div className="bg-green-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[320px]">
+            <div className="bg-white/20 p-2 rounded-full">
+              <span className="material-symbols-outlined text-2xl">check_circle</span>
+            </div>
+            <div>
+              <p className="font-bold text-lg">Grupo atualizado com sucesso!</p>
+              <p className="text-sm text-green-100">Redirecionando...</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <footer className="w-full py-6 mt-8 border-t border-border-light dark:border-border-dark">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-sm text-text-sec-light dark:text-text-sec-dark gap-4">

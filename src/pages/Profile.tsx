@@ -238,6 +238,7 @@ const Profile: React.FC = () => {
                                             <div className="flex flex-col">
                                                 <h1 className="text-3xl font-black text-[#111812] dark:text-white tracking-tight leading-none mb-1">{profile.name}</h1>
                                                 <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Perfil de Jogador</p>
+                                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 max-w-md">Esse é seu perfil público. Essas informações ajudam na formação dos times.</p>
                                             </div>
                                         )}
 
@@ -414,10 +415,9 @@ const Profile: React.FC = () => {
                                 Estatísticas Pessoais
                             </h2>
                             {stats.games === 0 ? (
-                                <div className="bg-gray-50 dark:bg-card-dark rounded-xl p-6 border border-dashed border-gray-300 dark:border-gray-700 text-center">
-                                    <span className="material-symbols-outlined text-gray-400 text-4xl mb-2">query_stats</span>
-                                    <p className="text-gray-600 dark:text-gray-300 font-medium">Nenhuma estatística ainda</p>
-                                    <p className="text-sm text-gray-500 mt-1">Seus números (jogos, gols, assistências) aparecerão aqui automaticamente após você participar de partidas.</p>
+                                <div className="bg-gray-50/50 dark:bg-gray-800/20 rounded-xl p-8 border border-gray-200 dark:border-gray-700/50 text-center">
+                                    <span className="material-symbols-outlined text-gray-300 dark:text-gray-600 text-3xl mb-2">query_stats</span>
+                                    <p className="text-sm text-gray-400 dark:text-gray-500 font-medium">Suas estatísticas aparecerão após as primeiras partidas</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -449,9 +449,17 @@ const Profile: React.FC = () => {
                                     <span className="material-symbols-outlined text-primary">groups</span>
                                     Meus Grupos
                                 </h2>
-                                <button className="text-sm font-bold text-primary hover:text-primary-dark transition-colors">
-                                    Ver todos
-                                </button>
+                                {groups.length > 0 && (
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => navigate('/create-group')}
+                                            className="text-sm font-bold text-primary hover:text-primary-dark transition-colors flex items-center gap-1"
+                                        >
+                                            <span className="material-symbols-outlined text-[18px]">add</span>
+                                            Criar Grupo
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                             <div className="space-y-4">
                                 {groups.map((group) => (
@@ -476,19 +484,23 @@ const Profile: React.FC = () => {
                                     </div>
                                 ))}
                                 {groups.length === 0 && (
-                                    <div className="text-center py-10 bg-gray-50 dark:bg-card-dark rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
-                                        <p className="text-gray-500 mb-4 font-medium">Você ainda não participa de nenhum grupo.</p>
+                                    <div className="text-center py-12 bg-gray-50 dark:bg-card-dark rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
+                                        <span className="material-symbols-outlined text-gray-300 dark:text-gray-600 text-5xl mb-3">groups</span>
+                                        <p className="text-gray-500 dark:text-gray-400 mb-1 font-medium">Você ainda não participa de nenhum grupo</p>
+                                        <p className="text-sm text-gray-400 dark:text-gray-500 mb-6">Crie um grupo para organizar seus jogos ou entre em um existente</p>
                                         <div className="flex flex-col sm:flex-row gap-3 justify-center">
                                             <button
                                                 onClick={() => navigate('/create-group')}
-                                                className="px-6 py-2 bg-primary text-[#102212] font-bold rounded-full text-sm hover:brightness-110 transition-all shadow-sm"
+                                                className="px-6 py-2.5 bg-primary text-[#102212] font-bold rounded-full text-sm hover:brightness-110 transition-all shadow-lg shadow-primary/20 flex items-center gap-2 justify-center"
                                             >
-                                                Criar um Grupo
+                                                <span className="material-symbols-outlined text-[20px]">add_circle</span>
+                                                Criar Meu Primeiro Grupo
                                             </button>
                                             <button
                                                 onClick={() => navigate('/')}
-                                                className="px-6 py-2 bg-white dark:bg-[#223625] border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-full text-sm hover:bg-gray-50 dark:hover:bg-[#2a4230] transition-colors"
+                                                className="px-6 py-2.5 bg-white dark:bg-[#223625] border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-full text-sm hover:bg-gray-50 dark:hover:bg-[#2a4230] transition-colors flex items-center gap-2 justify-center"
                                             >
+                                                <span className="material-symbols-outlined text-[20px]">mail</span>
                                                 Entrar com Convite
                                             </button>
                                         </div>

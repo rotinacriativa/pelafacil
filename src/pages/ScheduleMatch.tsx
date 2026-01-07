@@ -1,13 +1,19 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import { supabase } from '../services/supabase';
 import { useAuth } from '../hooks/useAuth';
 
 const ScheduleMatch: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { session, loading } = useAuth();
+
+  // Edit mode states
+  const [editMode, setEditMode] = useState(false);
+  const [matchId, setMatchId] = useState<string | null>(null);
+  const [isPastMatch, setIsPastMatch] = useState(false);
 
   // Form State
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -19,8 +25,85 @@ const ScheduleMatch: React.FC = () => {
   const [notes, setNotes] = useState('');
 
   const [creating, setCreating] = useState(false);
+  const [currentGroup, setCurrentGroup] = useState<{ id: string, name: string, invite_code: string } | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
-  React.useEffect(() => {
+  // Check for edit mode
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const editMatchId = params.get('edit');
+
+    if (editMatchId) {
+      setEditMode(true);
+      setMatchId(editMatchId);
+      loadMatchData(editMatchId);
+    }
+  }, [location.search]);
+
+  // Load match data for editing
+  const loadMatchData = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('matches')
+        .select('*, groups!inner(id, name, invite_code, owner_id)')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        const matchDateTime = new Date(data.date_time);
+        const dateStr = matchDateTime.toISOString().split('T')[0];
+        const timeStr = matchDateTime.toTimeString().slice(0, 5);
+
+        setDate(dateStr);
+        setTime(timeStr);
+        setLocationName(data.location || '');
+        setAddress(data.address || '');
+        setSlots(data.slots);
+        setPrice(data.price?.toString() || '');
+        setNotes(data.notes || '');
+        setCurrentGroup({ id: data.groups.id, name: data.groups.name, invite_code: data.groups.invite_code });
+
+        // Check if match has passed
+        setIsPastMatch(matchDateTime < new Date());
+      }
+    } catch (err: any) {
+      console.error('Error loading match:', err);
+      alert('Erro ao carregar dados da partida.');
+    }
+  };
+
+  // Sync calendar with date input
+  useEffect(() => {
+    if (date) {
+      setSelectedDate(new Date(date));
+    }
+  }, [date]);
+
+  // Load user's group on mount (only if not in edit mode)
+  useEffect(() => {
+    if (session?.user && !editMode) {
+      loadUserGroup();
+    }
+  }, [session, editMode]);
+
+  const loadUserGroup = async () => {
+    if (!session?.user) return;
+
+    const { data: groups } = await supabase
+      .from('groups')
+      .select('id, name, invite_code')
+      .eq('owner_id', session.user.id)
+      .limit(1);
+
+    if (groups && groups.length > 0) {
+      setCurrentGroup(groups[0]);
+    }
+  };
+
+  useEffect(() => {
     if (!loading && !session) {
       // Optional: Redirect automatically or let them browse?
       // For now, let's keep them here but show a banner or rely on button check.
@@ -106,19 +189,20 @@ const ScheduleMatch: React.FC = () => {
 
       if (playerError) console.error('Error adding creator to match:', playerError); // Non-blocking but log it
 
-      // Success feedback
-      alert('Partida criada com sucesso ⚽');
-
-      // Show invite link CTA
-      const inviteLink = `${window.location.origin}/#/join/${currentGroup?.invite_code}`;
-      const shouldCopy = confirm('Quer copiar o link de convite para compartilhar com o grupo?');
-
-      if (shouldCopy) {
-        navigator.clipboard.writeText(inviteLink);
-        alert('Link copiado! 📋');
+      // Update current group if it was just created
+      if (!currentGroup) {
+        await loadUserGroup();
       }
 
-      navigate('/dashboard');
+      // Success feedback with visual confirmation
+      setShowSuccess(true);
+
+      // Wait a bit to show the success message
+      setTimeout(() => {
+        navigate(`/match/${newMatchData[0].id}`, {
+          state: { fromCreation: true }
+        });
+      }, 2000);
 
     } catch (error: any) {
       console.error('Error creating match:', error);
@@ -137,11 +221,33 @@ const ScheduleMatch: React.FC = () => {
             <span className="text-sm font-medium">Voltar para o início</span>
           </div>
           <h1 className="text-slate-900 dark:text-white text-3xl md:text-5xl font-black leading-tight tracking-[-0.033em]">
-            Agendar Nova Partida
+            {editMode ? 'Editar Partida' : 'Agendar Nova Partida'}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-base md:text-lg font-normal mb-4">
-            Preencha os dados abaixo para convocar a galera.
+            {editMode ? 'Atualize os dados da partida.' : 'Preencha os dados abaixo para convocar a galera.'}
           </p>
+
+          {/* Past Match Warning */}
+          {isPastMatch && (
+            <div className="bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-800 p-4 rounded-xl mb-4">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-yellow-600 dark:text-yellow-400">warning</span>
+                <div>
+                  <p className="font-bold text-yellow-900 dark:text-yellow-200">Atenção!</p>
+                  <p className="text-sm text-yellow-800 dark:text-yellow-300">
+                    Esta partida já aconteceu. Você pode editar, mas verifique se realmente precisa.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {currentGroup && (
+            <div className="inline-flex items-center gap-2 self-center md:self-start px-4 py-2 bg-primary/10 border border-primary/20 rounded-full">
+              <span className="material-symbols-outlined text-primary text-[18px]">groups</span>
+              <span className="text-sm font-bold text-primary-dark dark:text-primary">Partida do grupo: {currentGroup.name}</span>
+            </div>
+          )}
 
           <button
             onClick={async () => {
@@ -334,12 +440,28 @@ const ScheduleMatch: React.FC = () => {
           <div className="hidden lg:flex flex-col w-[360px] gap-6">
             <div className="bg-surface-light dark:bg-surface-dark p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white">Agosto 2024</h3>
+                <h3 className="font-bold text-lg text-slate-900 dark:text-white capitalize">
+                  {selectedDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                </h3>
                 <div className="flex gap-2">
-                  <button className="size-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                  <button
+                    onClick={() => {
+                      const newDate = new Date(selectedDate);
+                      newDate.setMonth(newDate.getMonth() - 1);
+                      setDate(newDate.toISOString().split('T')[0]);
+                    }}
+                    className="size-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                  >
                     <span className="material-symbols-outlined text-sm">chevron_left</span>
                   </button>
-                  <button className="size-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                  <button
+                    onClick={() => {
+                      const newDate = new Date(selectedDate);
+                      newDate.setMonth(newDate.getMonth() + 1);
+                      setDate(newDate.toISOString().split('T')[0]);
+                    }}
+                    className="size-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                  >
                     <span className="material-symbols-outlined text-sm">chevron_right</span>
                   </button>
                 </div>
@@ -350,16 +472,53 @@ const ScheduleMatch: React.FC = () => {
                 ))}
               </div>
               <div className="grid grid-cols-7 gap-y-2 gap-x-1 text-center text-sm">
-                {[28, 29, 30, 31].map(d => (
-                  <div key={d} className="size-10 flex items-center justify-center text-slate-300 dark:text-slate-600">{d}</div>
-                ))}
-                {[1, 2, 3, 4].map(d => (
-                  <button key={d} className="size-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">{d}</button>
-                ))}
-                <button className="size-10 flex items-center justify-center rounded-full bg-primary text-slate-900 font-bold shadow-lg shadow-primary/30">5</button>
-                {Array.from({ length: 25 }, (_, i) => i + 6).map(d => (
-                  <button key={d} className="size-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200">{d}</button>
-                ))}
+                {(() => {
+                  const year = selectedDate.getFullYear();
+                  const month = selectedDate.getMonth();
+                  const firstDay = new Date(year, month, 1).getDay();
+                  const daysInMonth = new Date(year, month + 1, 0).getDate();
+                  const daysInPrevMonth = new Date(year, month, 0).getDate();
+                  const selectedDay = selectedDate.getDate();
+                  const today = new Date();
+                  const isCurrentMonth = today.getMonth() === month && today.getFullYear() === year;
+
+                  const days = [];
+
+                  // Previous month days
+                  for (let i = firstDay - 1; i >= 0; i--) {
+                    days.push(
+                      <div key={`prev-${i}`} className="size-10 flex items-center justify-center text-slate-300 dark:text-slate-600">
+                        {daysInPrevMonth - i}
+                      </div>
+                    );
+                  }
+
+                  // Current month days
+                  for (let d = 1; d <= daysInMonth; d++) {
+                    const isSelected = d === selectedDay;
+                    const isToday = isCurrentMonth && d === today.getDate();
+
+                    days.push(
+                      <button
+                        key={d}
+                        onClick={() => {
+                          const newDate = new Date(year, month, d);
+                          setDate(newDate.toISOString().split('T')[0]);
+                        }}
+                        className={`size-10 flex items-center justify-center rounded-full transition-all ${isSelected
+                          ? 'bg-primary text-slate-900 font-bold shadow-lg shadow-primary/30'
+                          : isToday
+                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-semibold'
+                            : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
+                          }`}
+                      >
+                        {d}
+                      </button>
+                    );
+                  }
+
+                  return days;
+                })()}
               </div>
             </div>
 
@@ -378,6 +537,21 @@ const ScheduleMatch: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Success Toast */}
+        {showSuccess && (
+          <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 animate-[slideDown_0.3s_ease-out]">
+            <div className="bg-green-500 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[320px]">
+              <div className="bg-white/20 p-2 rounded-full">
+                <span className="material-symbols-outlined text-2xl">check_circle</span>
+              </div>
+              <div>
+                <p className="font-bold text-lg">{editMode ? 'Partida atualizada com sucesso!' : 'Partida criada com sucesso!'}</p>
+                <p className="text-sm text-green-100">Redirecionando...</p>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </Layout>
   );

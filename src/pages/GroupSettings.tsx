@@ -22,6 +22,13 @@ const GroupSettings: React.FC = () => {
     const [editingMember, setEditingMember] = useState<any | null>(null);
     const [editForm, setEditForm] = useState<{ position: string | null; rating: number }>({ position: null, rating: 5.0 });
 
+    // Confirm Delete Modal
+    const [memberToDelete, setMemberToDelete] = useState<any | null>(null);
+
+    // Role Change Modal
+    const [memberToChangeRole, setMemberToChangeRole] = useState<any | null>(null);
+    const [newRole, setNewRole] = useState<'admin' | 'member'>('member');
+
     useEffect(() => {
         if (editingMember) {
             setEditForm({
@@ -47,6 +54,7 @@ const GroupSettings: React.FC = () => {
 
     const filteredMembers = members.filter(m => {
         if (filter === 'Todos') return true;
+        if (filter === 'Admins') return m.role === 'admin';
         // Simple mapping: 'Goleiros' -> 'Goleiro, etc.
         if (filter === 'Goleiros') return m.profile.position === 'Goleiro';
         if (filter === 'Defensores') return ['Zagueiro', 'Lateral'].includes(m.profile.position || '');
@@ -183,6 +191,7 @@ const GroupSettings: React.FC = () => {
 
                         <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
                             <button onClick={() => setFilter('Todos')} className={`whitespace-nowrap px-4 py-2 rounded-full font-bold text-sm transition-colors ${filter === 'Todos' ? 'bg-primary text-text-main' : 'bg-surface-light dark:bg-surface-dark text-text-secondary hover:bg-gray-200'}`}>Todos ({members.length})</button>
+                            <button onClick={() => setFilter('Admins')} className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-sm transition-colors ${filter === 'Admins' ? 'bg-primary text-text-main' : 'bg-surface-light dark:bg-surface-dark text-text-secondary hover:bg-gray-200'}`}>Admins ({members.filter(m => m.role === 'admin').length})</button>
                             <button onClick={() => setFilter('Goleiros')} className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-sm transition-colors ${filter === 'Goleiros' ? 'bg-primary text-text-main' : 'bg-surface-light dark:bg-surface-dark text-text-secondary hover:bg-gray-200'}`}>Goleiros ({members.filter(m => m.profile.position === 'Goleiro').length})</button>
                             <button onClick={() => setFilter('Defensores')} className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-sm transition-colors ${filter === 'Defensores' ? 'bg-primary text-text-main' : 'bg-surface-light dark:bg-surface-dark text-text-secondary hover:bg-gray-200'}`}>Defensores ({members.filter(m => ['Zagueiro', 'Lateral'].includes(m.profile.position || '')).length})</button>
                             <button onClick={() => setFilter('Meias')} className={`whitespace-nowrap px-4 py-2 rounded-full font-medium text-sm transition-colors ${filter === 'Meias' ? 'bg-primary text-text-main' : 'bg-surface-light dark:bg-surface-dark text-text-secondary hover:bg-gray-200'}`}>Meias ({members.filter(m => m.profile.position === 'Meio-campo').length})</button>
@@ -226,6 +235,30 @@ const GroupSettings: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        {member.role !== 'admin' && member.user_id !== group.owner_id && (
+                                            <button
+                                                onClick={() => {
+                                                    setMemberToChangeRole(member);
+                                                    setNewRole('admin');
+                                                }}
+                                                className="flex size-10 items-center justify-center rounded-full text-primary hover:bg-primary/ transition-colors"
+                                                title="Promover a Admin"
+                                            >
+                                                <span className="material-symbols-outlined">shield_person</span>
+                                            </button>
+                                        )}
+                                        {member.role === 'admin' && member.user_id !== group.owner_id && (
+                                            <button
+                                                onClick={() => {
+                                                    setMemberToChangeRole(member);
+                                                    setNewRole('member');
+                                                }}
+                                                className="flex size-10 items-center justify-center rounded-full text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+                                                title="Remover Admin"
+                                            >
+                                                <span className="material-symbols-outlined">person_remove</span>
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => setEditingMember(member)}
                                             className="flex size-10 items-center justify-center rounded-full text-text-secondary hover:bg-surface-light dark:hover:bg-surface-dark dark:text-gray-400 transition-colors"
@@ -233,17 +266,15 @@ const GroupSettings: React.FC = () => {
                                         >
                                             <span className="material-symbols-outlined">edit</span>
                                         </button>
-                                        <button
-                                            onClick={async () => {
-                                                if (window.confirm(`Deseja remover ${member.profile.name}?`)) {
-                                                    await removeMember(member.user_id);
-                                                }
-                                            }}
-                                            className="flex size-10 items-center justify-center rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                                            title="Remover Jogador"
-                                        >
-                                            <span className="material-symbols-outlined">person_remove</span>
-                                        </button>
+                                        {member.user_id !== group.owner_id && (
+                                            <button
+                                                onClick={() => setMemberToDelete(member)}
+                                                className="flex size-10 items-center justify-center rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                                title="Remover Jogador"
+                                            >
+                                                <span className="material-symbols-outlined">person_remove</span>
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -401,6 +432,69 @@ const GroupSettings: React.FC = () => {
                             >
                                 <span className="material-symbols-outlined">save</span>
                                 Salvar Alterações
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Member Confirmation Modal */}
+            {memberToDelete && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="w-full max-w-md bg-card-light dark:bg-card-dark rounded-2xl p-6 shadow-2xl border border-surface-light dark:border-surface-dark">
+                        <h3 className="text-xl font-bold text-text-main dark:text-white mb-4">Confirmar Remoção</h3>
+                        <p className="text-text-muted dark:text-gray-400 mb-6">
+                            Tem certeza que deseja remover <strong>{memberToDelete.profile.name}</strong> do grupo?
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setMemberToDelete(null)}
+                                className="flex-1 h-12 rounded-xl bg-gray-100 dark:bg-surface-dark text-text-main dark:text-white font-bold hover:bg-gray-200 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    await removeMember(memberToDelete.user_id);
+                                    setMemberToDelete(null);
+                                }}
+                                className="flex-1 h-12 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold transition-colors"
+                            >
+                                Remover
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Role Change Confirmation Modal */}
+            {memberToChangeRole && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="w-full max-w-md bg-card-light dark:bg-card-dark rounded-2xl p-6 shadow-2xl border border-surface-light dark:border-surface-dark">
+                        <h3 className="text-xl font-bold text-text-main dark:text-white mb-4">
+                            {newRole === 'admin' ? 'Promover a Administrador' : 'Remover Administrador'}
+                        </h3>
+                        <p className="text-text-muted dark:text-gray-400 mb-6">
+                            {newRole === 'admin'
+                                ? `Deseja promover ${memberToChangeRole.profile.name} a administrador do grupo?`
+                                : `Deseja remover ${memberToChangeRole.profile.name} como administrador do grupo?`
+                            }
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setMemberToChangeRole(null)}
+                                className="flex-1 h-12 rounded-xl bg-gray-100 dark:bg-surface-dark text-text-main dark:text-white font-bold hover:bg-gray-200 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    await updateMember(memberToChangeRole.user_id, { role: newRole });
+                                    setMemberToChangeRole(null);
+                                }}
+                                className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary-hover text-text-main font-bold transition-colors"
+                            >
+                                Confirmar
                             </button>
                         </div>
                     </div>

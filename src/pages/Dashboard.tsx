@@ -47,7 +47,6 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-
     <Layout>
       {/* Main Content */}
       <main className="flex-1 w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -102,8 +101,14 @@ const Dashboard: React.FC = () => {
 
                 <button
                   onClick={() => {
-                    const code = prompt('Cole o código do convite:');
-                    if (code) navigate(`/join/${code}`);
+                    const input = prompt('Cole o código do convite:');
+                    if (input) {
+                      // Extract invite code from full URL or use as-is
+                      const code = input.includes('/join/')
+                        ? input.split('/join/').pop()?.split('?')[0].split('#')[0]
+                        : input.trim();
+                      if (code) navigate(`/join/${code}`);
+                    }
                   }}
                   className="w-full flex items-center justify-center gap-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-text-main dark:text-white px-6 py-4 rounded-xl font-bold transition-all"
                 >
@@ -224,7 +229,7 @@ const Dashboard: React.FC = () => {
             {/* Create New Card Placeholder */}
             <button
               onClick={() => navigate('/create-group')}
-              className="flex flex-col items-center justify-center gap-4 bg-transparent border-2 border-dashed border-[#ccd5cc] dark:border-[#2f4532] hover:border-primary dark:hover:border-primary rounded-xl min-h-[300px] group transition-all duration-300 hover:bg-white/50 dark:hover:bg-surface-dark/50 cursor-pointer"
+              className="flex flex-col items-center justify-center gap-4 bg-transparent border-2 border-dashed border-[#ccd5cc] dark:border-[#2f4532] hover:border-primary dark:hover:border-primary rounded-xl min-h-[300px] group transition-all duration-300"
             >
               <div className="size-20 rounded-full bg-[#f0f4f0] dark:bg-[#2f4532] flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                 <span className="material-symbols-outlined text-[40px] text-[#618965] dark:text-[#a0cba4] group-hover:text-primary">add</span>
@@ -235,17 +240,8 @@ const Dashboard: React.FC = () => {
               </div>
             </button>
           </div>
+        )}
       </main>
-
-      {/* Quick Floating Action Button (Mobile Only) */}
-      <div className="fixed bottom-6 right-6 md:hidden z-40">
-        <button
-          onClick={() => navigate('/create-group')}
-          className="flex items-center justify-center size-14 rounded-full bg-primary text-[#111812] shadow-lg shadow-primary/30 hover:scale-105 active:scale-95 transition-all"
-        >
-          <span className="material-symbols-outlined text-[28px]">add</span>
-        </button>
-      </div>
     </Layout>
   );
 

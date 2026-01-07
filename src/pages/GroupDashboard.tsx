@@ -5,6 +5,7 @@ import Breadcrumb from '../components/common/Breadcrumb';
 import GroupTabs from '../components/common/GroupTabs';
 import { useMatches } from '../hooks/useMatches';
 import { useGroups } from '../hooks/useGroups';
+import { useGroupMembers } from '../hooks/useGroupMembers';
 import { formatDate, formatTime } from '../utils/format';
 import { supabase } from '../lib/supabase';
 
@@ -13,6 +14,7 @@ const GroupDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { groups, loading: groupsLoading } = useGroups();
   const { matches, loading: matchesLoading, refetch: refetchMatches } = useMatches();
+  const { members, loading: membersLoading } = useGroupMembers(groupId);
 
   const group = groups.find(g => g.id === groupId);
 
@@ -68,13 +70,21 @@ const GroupDashboard: React.FC = () => {
     }
   };
 
-  const isLoading = groupsLoading || matchesLoading;
+  const isLoading = groupsLoading || matchesLoading || membersLoading;
 
   const quickActions = [
     { name: 'Membros', icon: 'groups', path: `/groups/${groupId}/roster`, color: 'bg-orange-100 text-orange-600', desc: 'Gerenciar jogadores' },
     { name: 'Placar', icon: 'scoreboard', path: '/scoreboard', color: 'bg-primary/10 text-primary-dark', desc: 'Cronômetro e gols' },
     { name: 'Explorar', icon: 'search', path: '/explore', color: 'bg-primary/10 text-primary-dark', desc: 'Encontrar partidas' },
   ];
+
+  // Add 'Create Match' and 'Edit Group' for admins only
+  const adminActions = group?.role === 'admin' ? [
+    { name: 'Criar Partida', icon: 'add_circle', path: '/schedule-match', color: 'bg-green-100 text-green-700', desc: 'Agendar novo jogo' },
+    { name: 'Editar Grupo', icon: 'edit', path: `/create-group?edit=${groupId}`, color: 'bg-blue-100 text-blue-700', desc: 'Nome e descrição' },
+  ] : [];
+
+  const allActions = [...quickActions, ...adminActions];
 
   if (isLoading) {
     return (
@@ -136,13 +146,10 @@ const GroupDashboard: React.FC = () => {
 
         {/* Quick Links Section */}
         <section className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {quickActions.map((action) => (
+          {allActions.map((action) => (
             <Link
               key={action.name}
-              to={action.path} // Note: Ideally paths should be relative to group or context aware? 
-              // Currently global paths like /roster imply "current group" in context. 
-              // For MVP we assume global context is set or simple paths work.
-              // Ideally /groups/:id/roster - but sticking to simple refactor.
+              to={action.path}
               className="bg-surface-light dark:bg-surface-dark p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-primary/50 transition-all flex flex-col items-start text-left relative group overflow-hidden"
             >
               <div className={`size-12 rounded-xl ${action.color} flex items-center justify-center mb-4 transition-transform group-hover:scale-110 overflow-hidden`}>
@@ -178,8 +185,9 @@ const GroupDashboard: React.FC = () => {
                 </button>
               </div>
             ) : (
-            /* Match Card */
-            <article className="relative flex flex-col bg-surface-light dark:bg-surface-dark rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 overflow-hidden transition-all duration-300 hover:shadow-xl">
+              /* Match Card */
+              <>
+                <article className="relative flex flex-col bg-surface-light dark:bg-surface-dark rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 overflow-hidden transition-all duration-300 hover:shadow-xl">
                   <div className="absolute top-4 left-4 z-10 flex gap-2">
                     <span className="px-4 py-1.5 rounded-full bg-primary text-text-main text-xs font-bold shadow-sm flex items-center gap-1">
                       <span className="material-symbols-outlined text-sm icon-filled">check_circle</span>
@@ -228,7 +236,7 @@ const GroupDashboard: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                </div>
+                </article>
 
                 <div className="flex flex-col sm:flex-row gap-4">
                   <button onClick={() => navigate(`/match/${nextMatch.id}`)} className="flex-1 group relative overflow-hidden rounded-xl h-14 bg-primary hover:bg-primary-hover transition-colors flex items-center justify-center shadow-lg shadow-primary/20">
@@ -241,99 +249,161 @@ const GroupDashboard: React.FC = () => {
                   </button>
                 </div>
               </>
-          ) : (
-          <div className="group relative overflow-hidden rounded-2xl bg-surface-light dark:bg-surface-dark shadow-sm border border-slate-100 dark:border-slate-800 p-8 flex flex-col items-center justify-center gap-4 text-center">
-            <div className="size-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-2">
-              <span className="material-symbols-outlined text-3xl">event_busy</span>
-            </div>
-            <h3 className="text-xl font-bold dark:text-white">Nenhuma partida agendada</h3>
-            <p className="text-text-muted">Não há jogos marcados no momento. Que tal começar um?</p>
-            <button onClick={() => navigate('/schedule-match')} className="bg-primary text-text-main font-bold py-2.5 px-6 rounded-full hover:bg-primary-hover shadow-lg shadow-primary/20 mt-2">
-              Criar Nova Partida
-            </button>
-          </div>
             )}
-        </div>
-
-        <div className="lg:col-span-4 flex flex-col gap-4">
-          <div className="bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
-            <h3 className="text-lg font-bold text-text-main dark:text-white mb-4">Membros</h3>
-            <p className="text-text-muted text-sm mb-4">Gerencie seu elenco e convide novos jogadores.</p>
-            <button onClick={() => navigate('/roster')} className="w-full py-2 bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-border-dark rounded-lg text-sm font-bold transition-colors">
-              Ver todos
-            </button>
-          </div>
-        </div>
-
-      </div>
-    </main>
-      {/* Edit Match Modal */ }
-  {
-    isEditingMatch && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-        <div className="w-full max-w-md bg-white dark:bg-card-dark rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-          <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-            <h3 className="text-xl font-bold text-text-main dark:text-white">Editar Partida</h3>
-            <button
-              onClick={() => setIsEditingMatch(false)}
-              className="size-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-text-muted hover:text-text-main transition-colors"
-            >
-              <span className="material-symbols-outlined text-xl">close</span>
-            </button>
           </div>
 
-          <div className="p-6 flex flex-col gap-4">
-            <div>
-              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Data</label>
-              <input
-                type="date"
-                value={editForm.date}
-                onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
-                className="w-full h-12 rounded-xl bg-gray-50 dark:bg-surface-dark border-transparent focus:border-primary focus:ring-0 text-text-main dark:text-white px-4 transition-all"
-              />
+          <div className="lg:col-span-4 flex flex-col gap-6">
+            {/* Members Section */}
+            <div className="bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-text-main dark:text-white">Membros</h3>
+                <span className="text-xs font-bold text-text-muted dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-full">
+                  {members.length} {members.length === 1 ? 'membro' : 'membros'}
+                </span>
+              </div>
+
+              {/* Member Avatars */}
+              <div className="flex flex-wrap gap-3 mb-4">
+                {members.slice(0, 8).map((member) => (
+                  <div key={member.user_id} className="relative group/avatar">
+                    <div
+                      className="size-12 rounded-full bg-cover bg-center ring-2 ring-white dark:ring-surface-dark cursor-pointer transition-transform hover:scale-110"
+                      style={{ backgroundImage: `url("${member.profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.profile.name)}&background=random&color=fff`}")` }}
+                      title={member.profile.name}
+                    />
+                    {member.role === 'admin' && (
+                      <div className="absolute -bottom-1 -right-1 size-4 bg-primary rounded-full flex items-center justify-center border-2 border-white dark:border-surface-dark">
+                        <span className="material-symbols-outlined text-[10px] text-text-main">shield</span>
+                      </div>
+                    )}
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover/avatar:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
+                      {member.profile.name}
+                    </div>
+                  </div>
+                ))}
+                {members.length > 8 && (
+                  <div className="size-12 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs font-bold text-text-muted dark:text-gray-400">
+                    +{members.length - 8}
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={() => navigate(`/groups/${groupId}/roster`)}
+                className="w-full py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg text-sm font-bold transition-colors text-text-main dark:text-white flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">groups</span>
+                Ver todos os membros
+              </button>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Horário</label>
-              <input
-                type="time"
-                value={editForm.time}
-                onChange={(e) => setEditForm({ ...editForm, time: e.target.value })}
-                className="w-full h-12 rounded-xl bg-gray-50 dark:bg-surface-dark border-transparent focus:border-primary focus:ring-0 text-text-main dark:text-white px-4 transition-all"
-              />
-            </div>
+            {/* Group Rules/Description */}
+            {group.description && (
+              <div className="bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="material-symbols-outlined text-primary text-xl">description</span>
+                  <h3 className="text-lg font-bold text-text-main dark:text-white">Regras do Grupo</h3>
+                </div>
+                <div className="text-text-muted dark:text-gray-400 text-sm leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
+                  {group.description}
+                </div>
+              </div>
+            )}
 
-            <div>
-              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Local</label>
-              <input
-                type="text"
-                value={editForm.location}
-                onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
-                placeholder="Ex: Arena Soccer"
-                className="w-full h-12 rounded-xl bg-gray-50 dark:bg-surface-dark border-transparent focus:border-primary focus:ring-0 text-text-main dark:text-white px-4 transition-all"
-              />
+            {/* Group Stats */}
+            <div className="bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
+              <h3 className="text-lg font-bold text-text-main dark:text-white mb-4">Estatísticas</h3>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="text-sm text-text-muted dark:text-gray-400">Total de Membros</span>
+                  <span className="text-lg font-bold text-text-main dark:text-white">{members.length}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="text-sm text-text-muted dark:text-gray-400">Partidas Agendadas</span>
+                  <span className="text-lg font-bold text-text-main dark:text-white">
+                    {matches.filter(m => m.group_id === groupId && m.status === 'scheduled').length}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm text-text-muted dark:text-gray-400">Administradores</span>
+                  <span className="text-lg font-bold text-text-main dark:text-white">
+                    {members.filter(m => m.role === 'admin').length}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="p-6 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-surface-dark/50 flex gap-3">
-            <button
-              onClick={() => setIsEditingMatch(false)}
-              className="flex-1 h-12 rounded-xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-text-main dark:text-white font-bold hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSaveMatch}
-              disabled={isSavingMatch}
-              className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary-hover text-text-main font-bold shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
-            >
-              {isSavingMatch ? 'Salvando...' : 'Salvar'}
-            </button>
-          </div>
         </div>
-      </div>
-    )
-  }
+      </main>
+      {/* Edit Match Modal */}
+      {
+        isEditingMatch && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-md bg-white dark:bg-card-dark rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+              <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                <h3 className="text-xl font-bold text-text-main dark:text-white">Editar Partida</h3>
+                <button
+                  onClick={() => setIsEditingMatch(false)}
+                  className="size-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-text-muted hover:text-text-main transition-colors"
+                >
+                  <span className="material-symbols-outlined text-xl">close</span>
+                </button>
+              </div>
+
+              <div className="p-6 flex flex-col gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Data</label>
+                  <input
+                    type="date"
+                    value={editForm.date}
+                    onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                    className="w-full h-12 rounded-xl bg-gray-50 dark:bg-surface-dark border-transparent focus:border-primary focus:ring-0 text-text-main dark:text-white px-4 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Horário</label>
+                  <input
+                    type="time"
+                    value={editForm.time}
+                    onChange={(e) => setEditForm({ ...editForm, time: e.target.value })}
+                    className="w-full h-12 rounded-xl bg-gray-50 dark:bg-surface-dark border-transparent focus:border-primary focus:ring-0 text-text-main dark:text-white px-4 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Local</label>
+                  <input
+                    type="text"
+                    value={editForm.location}
+                    onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                    placeholder="Ex: Arena Soccer"
+                    className="w-full h-12 rounded-xl bg-gray-50 dark:bg-surface-dark border-transparent focus:border-primary focus:ring-0 text-text-main dark:text-white px-4 transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-surface-dark/50 flex gap-3">
+                <button
+                  onClick={() => setIsEditingMatch(false)}
+                  className="flex-1 h-12 rounded-xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-text-main dark:text-white font-bold hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSaveMatch}
+                  disabled={isSavingMatch}
+                  className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary-hover text-text-main font-bold shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
+                >
+                  {isSavingMatch ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
     </Layout >
   );
 };

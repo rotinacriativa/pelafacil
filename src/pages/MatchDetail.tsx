@@ -1,15 +1,29 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import SuccessModal from '../components/features/SuccessModal';
 import { useMatchDetails } from '../hooks/useMatchDetails';
+import { useGroups } from '../hooks/useGroups';
+import { useAuth } from '../hooks/useAuth';
 
 const MatchDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { session } = useAuth();
   const { match, loading, requestEntry } = useMatchDetails(id);
+  const { groups } = useGroups();
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+
+  // Check if user is admin of this match's group
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (match && groups.length > 0) {
+      const matchGroup = groups.find(g => g.id === match.group_id);
+      setIsAdmin(matchGroup?.role === 'admin');
+    }
+  }, [match, groups]);
 
   // Fallback for rules (could be in DB later)
   const rules = [
@@ -234,6 +248,17 @@ const MatchDetail: React.FC = () => {
                     <span className="material-symbols-outlined icon-filled">scoreboard</span>
                     Abrir Placar ao Vivo
                   </button>
+
+                  {/* Edit Match Button (Admin Only) */}
+                  {isAdmin && (
+                    <button
+                      onClick={() => navigate(`/schedule-match?edit=${match.id}`)}
+                      className="w-full flex items-center justify-center h-12 text-base font-bold text-primary hover:text-primary-dark hover:bg-primary/5 rounded-full transition-all gap-2 border border-primary/20"
+                    >
+                      <span className="material-symbols-outlined">edit</span>
+                      Editar Partida
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
