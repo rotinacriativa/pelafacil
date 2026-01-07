@@ -18,6 +18,7 @@ const LoginPage: React.FC = () => {
   const [fullName, setFullName] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [message, setMessage] = React.useState<string | null>(null);
 
   useEffect(() => {
     if (user && !loading) {
@@ -39,6 +40,7 @@ const LoginPage: React.FC = () => {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setMessage(null);
 
     // Basic Validation
     if (!email || !password) {
@@ -54,7 +56,18 @@ const LoginPage: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    setLoading(true); // START LOADING
+
+    // Safety timeout: stop loading if it takes too long (e.g. 10s)
+    const timeoutId = setTimeout(() => {
+      setLoading((currentLoading) => {
+        if (currentLoading) {
+          setError('A conexão demorou muito. Verifique sua internet e tente novamente.');
+          return false;
+        }
+        return false;
+      });
+    }, 15000);
 
     try {
       if (isSignUp) {
@@ -71,13 +84,11 @@ const LoginPage: React.FC = () => {
 
         // Check if email confirmation is required (no session)
         if (data.user && !data.session) {
-          alert('Conta criada com sucesso! Verifique seu e-mail para confirmar o cadastro.');
-          setIsSignUp(false); // Switch to login mode
-          return;
-        }
-
-        // Specific fix: Only navigate if we have a session
-        if (data.session) {
+          setMessage('Conta criada com sucesso! Verifique seu e-mail para confirmar o cadastro.'); // Use UI message instead of alert
+          setIsSignUp(false);
+          // Don't return here, let finally block run
+        } else if (data.session) {
+          // Specific fix: Only navigate if we have a session
           navigate('/profile', { replace: true });
         }
       } else {
@@ -93,7 +104,8 @@ const LoginPage: React.FC = () => {
       console.error('Auth Error:', err);
       setError(getErrorMessage(err));
     } finally {
-      setLoading(false);
+      clearTimeout(timeoutId); // Clear the safety timeout
+      setLoading(false); // ALWAYS RUNS
     }
   };
 
@@ -101,7 +113,10 @@ const LoginPage: React.FC = () => {
     e.preventDefault();
     setIsSignUp(!isSignUp);
     setError(null);
+    setMessage(null);
   };
+
+  // ... toggleMode ...
 
   return (
     <div className="relative flex min-h-screen w-full flex-row overflow-hidden bg-background-light dark:bg-background-dark font-display text-[#111812] dark:text-white">
@@ -110,6 +125,7 @@ const LoginPage: React.FC = () => {
         <div className="flex w-full flex-col max-w-[480px] mx-auto">
           {/* Logo Header */}
           <header className="mb-10 flex items-center gap-3">
+            {/* ... */}
             <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
               <div className="flex items-center justify-center size-10 rounded-full bg-primary/20 text-primary">
                 <span className="material-symbols-outlined text-3xl">sports_soccer</span>
@@ -135,6 +151,13 @@ const LoginPage: React.FC = () => {
                 {error}
               </div>
             )}
+            {message && (
+              <div className="p-3 text-sm text-green-700 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
+                <span className="material-symbols-outlined text-lg">check_circle</span>
+                {message}
+              </div>
+            )}
+
 
             {isSignUp && (
               <label className="flex flex-col gap-2">
