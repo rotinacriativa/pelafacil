@@ -222,13 +222,23 @@ const Profile: React.FC = () => {
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                     <div className="flex-1">
                                         {isEditing ? (
-                                            <input
-                                                value={profile.name}
-                                                onChange={e => setProfile({ ...profile, name: e.target.value })}
-                                                className="text-3xl font-black text-[#111812] dark:text-white bg-transparent border-b-2 border-primary outline-none w-full md:w-auto"
-                                            />
+                                            <div className="flex flex-col gap-2 w-full">
+                                                <div className="inline-flex items-center gap-1.5 self-center md:self-start px-3 py-1 bg-primary/20 text-primary-dark dark:text-primary font-bold text-xs rounded-full uppercase tracking-wider">
+                                                    <span className="material-symbols-outlined text-[16px]">edit_note</span>
+                                                    Modo de Edição
+                                                </div>
+                                                <input
+                                                    value={profile.name}
+                                                    onChange={e => setProfile({ ...profile, name: e.target.value })}
+                                                    className="text-3xl font-black text-[#111812] dark:text-white bg-transparent border-b-2 border-primary outline-none w-full md:w-auto"
+                                                    placeholder="Seu Nome"
+                                                />
+                                            </div>
                                         ) : (
-                                            <h1 className="text-3xl font-black text-[#111812] dark:text-white tracking-tight">{profile.name}</h1>
+                                            <div className="flex flex-col">
+                                                <h1 className="text-3xl font-black text-[#111812] dark:text-white tracking-tight leading-none mb-1">{profile.name}</h1>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Perfil de Jogador</p>
+                                            </div>
                                         )}
 
                                         <div className="flex flex-wrap justify-center md:justify-start gap-x-6 gap-y-2 mt-2 text-gray-600 dark:text-gray-400 font-medium text-sm">
@@ -294,6 +304,9 @@ const Profile: React.FC = () => {
                                 <span className="material-symbols-outlined text-primary">badge</span>
                                 Ficha do Jogador
                             </h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 -mt-4 mb-6 leading-snug">
+                                Essas informações ajudam a montar times mais equilibrados.
+                            </p>
                             <form className="space-y-5" onSubmit={(e) => e.preventDefault()}>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2">Posição Preferida</label>
@@ -398,27 +411,33 @@ const Profile: React.FC = () => {
                                 <span className="material-symbols-outlined text-primary">bar_chart</span>
                                 Estatísticas Pessoais
                             </h2>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                {/* Stats Cards (Static for now to avoid complexity in this edit, logic in Stats page) */}
-                                {/* Stats Cards (Real Data) */}
-                                <div className="bg-white dark:bg-card-dark p-5 rounded-xl border border-gray-100 dark:border-[#2a3c2d] shadow-sm text-center">
-                                    <div className="text-3xl font-black text-[#111812] dark:text-white mb-0.5">{stats.games}</div>
-                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Jogos</div>
+                            {stats.games === 0 ? (
+                                <div className="bg-gray-50 dark:bg-card-dark rounded-xl p-6 border border-dashed border-gray-300 dark:border-gray-700 text-center">
+                                    <span className="material-symbols-outlined text-gray-400 text-4xl mb-2">query_stats</span>
+                                    <p className="text-gray-600 dark:text-gray-300 font-medium">Nenhuma estatística ainda</p>
+                                    <p className="text-sm text-gray-500 mt-1">Seus números (jogos, gols, assistências) aparecerão aqui automaticamente após você participar de partidas.</p>
                                 </div>
-                                <div className="bg-white dark:bg-card-dark p-5 rounded-xl border border-gray-100 dark:border-[#2a3c2d] shadow-sm text-center">
-                                    <div className="text-3xl font-black text-[#111812] dark:text-white mb-0.5">{stats.goals}</div>
-                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Gols</div>
+                            ) : (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                    <div className="bg-white dark:bg-card-dark p-5 rounded-xl border border-gray-100 dark:border-[#2a3c2d] shadow-sm text-center">
+                                        <div className="text-3xl font-black text-[#111812] dark:text-white mb-0.5">{stats.games}</div>
+                                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Jogos</div>
+                                    </div>
+                                    <div className="bg-white dark:bg-card-dark p-5 rounded-xl border border-gray-100 dark:border-[#2a3c2d] shadow-sm text-center">
+                                        <div className="text-3xl font-black text-[#111812] dark:text-white mb-0.5">{stats.goals}</div>
+                                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Gols</div>
+                                    </div>
+                                    <div className="bg-white dark:bg-card-dark p-5 rounded-xl border border-gray-100 dark:border-[#2a3c2d] shadow-sm text-center">
+                                        <div className="text-3xl font-black text-[#111812] dark:text-white mb-0.5">{stats.assists}</div>
+                                        <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Assistências</div>
+                                    </div>
+                                    <div className="bg-gradient-to-br from-yellow-100 to-orange-100 dark:from-yellow-900/20 dark:to-orange-900/20 p-5 rounded-xl border border-yellow-200 dark:border-yellow-800/30 shadow-sm text-center relative overflow-hidden group">
+                                        <div className="text-3xl font-black text-orange-600 dark:text-yellow-500 mb-0.5 relative z-10">{stats.mvp}</div>
+                                        <div className="text-xs font-bold text-orange-800 dark:text-yellow-600 uppercase tracking-wider relative z-10">MVP (Craque)</div>
+                                        <span className="material-symbols-outlined absolute -bottom-4 -right-4 text-6xl text-orange-500/10 group-hover:scale-110 transition-transform">emoji_events</span>
+                                    </div>
                                 </div>
-                                <div className="bg-white dark:bg-card-dark p-5 rounded-xl border border-gray-100 dark:border-[#2a3c2d] shadow-sm text-center">
-                                    <div className="text-3xl font-black text-[#111812] dark:text-white mb-0.5">{stats.assists}</div>
-                                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Assistências</div>
-                                </div>
-                                <div className="bg-gradient-to-br from-yellow-100 to-orange-100 dark:from-yellow-900/20 dark:to-orange-900/20 p-5 rounded-xl border border-yellow-200 dark:border-yellow-800/30 shadow-sm text-center relative overflow-hidden group">
-                                    <div className="text-3xl font-black text-orange-600 dark:text-yellow-500 mb-0.5 relative z-10">{stats.mvp}</div>
-                                    <div className="text-xs font-bold text-orange-800 dark:text-yellow-600 uppercase tracking-wider relative z-10">MVP (Craque)</div>
-                                    <span className="material-symbols-outlined absolute -bottom-4 -right-4 text-6xl text-orange-500/10 group-hover:scale-110 transition-transform">emoji_events</span>
-                                </div>
-                            </div>
+                            )}
                         </section>
 
                         {/* Groups Section */}
@@ -455,8 +474,22 @@ const Profile: React.FC = () => {
                                     </div>
                                 ))}
                                 {groups.length === 0 && (
-                                    <div className="text-center py-10 text-gray-500">
-                                        Você ainda não participa de nenhum grupo.
+                                    <div className="text-center py-10 bg-gray-50 dark:bg-card-dark rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
+                                        <p className="text-gray-500 mb-4 font-medium">Você ainda não participa de nenhum grupo.</p>
+                                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                                            <button
+                                                onClick={() => navigate('/create-group')}
+                                                className="px-6 py-2 bg-primary text-[#102212] font-bold rounded-full text-sm hover:brightness-110 transition-all shadow-sm"
+                                            >
+                                                Criar um Grupo
+                                            </button>
+                                            <button
+                                                onClick={() => navigate('/')}
+                                                className="px-6 py-2 bg-white dark:bg-[#223625] border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-bold rounded-full text-sm hover:bg-gray-50 dark:hover:bg-[#2a4230] transition-colors"
+                                            >
+                                                Entrar com Convite
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
