@@ -70,7 +70,7 @@ const GroupDashboard: React.FC = () => {
   const isLoading = groupsLoading || matchesLoading;
 
   const quickActions = [
-    { name: 'Membros', icon: 'groups', path: '/roster', color: 'bg-orange-100 text-orange-600', desc: 'Gerenciar jogadores' },
+    { name: 'Membros', icon: 'groups', path: `/groups/${groupId}/roster`, color: 'bg-orange-100 text-orange-600', desc: 'Gerenciar jogadores' },
     { name: 'Placar', icon: 'scoreboard', path: '/scoreboard', color: 'bg-primary/10 text-primary-dark', desc: 'Cronômetro e gols' },
     { name: 'Explorar', icon: 'search', path: '/explore', color: 'bg-primary/10 text-primary-dark', desc: 'Encontrar partidas' },
   ];

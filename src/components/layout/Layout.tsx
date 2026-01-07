@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
 
 import { usePendingRequestsCount } from '../../hooks/usePendingRequestsCount';
 
@@ -9,6 +9,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+    const { groupId } = useParams<{ groupId: string }>();
     const navigate = useNavigate();
     const location = useLocation();
     const pendingCount = usePendingRequestsCount();
@@ -29,7 +30,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <nav className="flex items-center gap-6 text-sm font-medium">
                             <Link className={`${isActive('/dashboard') ? 'text-primary font-bold' : 'text-text-main dark:text-gray-200 hover:text-primary transition-colors'}`} to="/dashboard">Início</Link>
                             <Link className={`${isActive('/explore') ? 'text-primary font-bold' : 'text-text-main dark:text-gray-200 hover:text-primary transition-colors'}`} to="/explore">Explorar</Link>
-                            <Link className={`${isActive('/roster') ? 'text-primary font-bold' : 'text-text-main dark:text-gray-200 hover:text-primary transition-colors'}`} to="/roster">Jogadores</Link>
+                            {groupId && (
+                                <Link className={`${location.pathname.includes('/roster') ? 'text-primary font-bold' : 'text-text-main dark:text-gray-200 hover:text-primary transition-colors'}`} to={`/groups/${groupId}/roster`}>Jogadores</Link>
+                            )}
                             <Link
                                 className={`${isActive('/requests') ? 'text-primary font-bold' : 'text-text-main dark:text-gray-200 hover:text-primary transition-colors'} relative`}
                                 to="/requests"

@@ -52,7 +52,7 @@ const App: React.FC = () => {
               <Route path="/create-group" element={<CreateGroup />} />
               <Route path="/schedule-match" element={<ScheduleMatch />} />
               <Route path="/match/:id" element={<MatchDetail />} />
-              <Route path="/roster" element={<RosterManagement />} />
+              <Route path="/groups/:groupId/roster" element={<RosterManagement />} />
 
               <Route path="/generator" element={<TeamGenerator />} />
               <Route path="/scoreboard" element={<Scoreboard />} />

@@ -1,13 +1,14 @@
 
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
 import ShareModal from '../components/features/ShareModal';
-import { useGroupMembers, GroupMember } from '../hooks/useGroupMembers';
+import { useGroupMembers, GroupMemberProfile } from '../hooks/useGroupMembers';
 
 const RosterManagement: React.FC = () => {
+  const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
-  const { members, loading, removeMember } = useGroupMembers();
+  const { members, loading, removeMember } = useGroupMembers(groupId);
 
   const [activeFilter, setActiveFilter] = useState<'Todos' | 'Goleiro' | 'Meia' | 'Atacante'>('Todos');
   const [searchTerm, setSearchTerm] = useState('');
