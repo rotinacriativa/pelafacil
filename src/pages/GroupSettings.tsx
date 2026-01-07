@@ -75,9 +75,16 @@ const GroupSettings: React.FC = () => {
     const handleSaveRules = async () => {
         if (!group) return;
         setIsSaving(true);
-        await updateGroup(group.id, { description: rules });
-        setIsSaving(false);
-        // Optional: toast success
+        try {
+            const { error } = await updateGroup(group.id, { description: rules });
+            if (error) throw new Error(error);
+            alert('Regras do grupo atualizadas com sucesso!');
+        } catch (err) {
+            console.error('Error saving rules:', err);
+            alert('Erro ao salvar regras. Tente novamente.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     if (!group) {
@@ -277,12 +284,18 @@ const GroupSettings: React.FC = () => {
                                 <p className="text-text-secondary dark:text-gray-300">Envie um link direto no grupo do WhatsApp para que seus amigos entrem automaticamente.</p>
                             </div>
                             <button
-                                onClick={() => {
+                                onClick={async () => {
                                     if (group?.invite_code) {
                                         const url = `${window.location.origin}/join/${group.invite_code}`;
-                                        navigator.clipboard.writeText(url);
-                                        // Simple alert for MVP, ideally use a toast
-                                        alert('Link copiado: ' + url);
+                                        try {
+                                            await navigator.clipboard.writeText(url);
+                                            alert('Link copiado para a área de transferência!');
+                                        } catch (err) {
+                                            console.error('Failed to copy:', err);
+                                            alert('Erro ao copiar link. Copie manualmente: ' + url);
+                                        }
+                                    } else {
+                                        alert('Erro: Código de convite não encontrado para este grupo.');
                                     }
                                 }}
                                 className="w-full max-w-sm h-14 rounded-full bg-primary hover:bg-primary-hover text-text-main font-bold text-lg shadow-lg shadow-primary/20 transition-transform active:scale-95 flex items-center justify-center gap-3"
