@@ -71,6 +71,7 @@ const GroupSettings: React.FC = () => {
             // This prevents overwriting user edits if the group refreshes in background
             if (group.id !== lastLoadedGroupId.current) {
                 setRules(group.description || '');
+                setGroupName(group.name || '');
                 lastLoadedGroupId.current = group.id;
             }
 
