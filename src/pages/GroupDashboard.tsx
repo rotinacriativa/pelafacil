@@ -1,7 +1,8 @@
-
 import React from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
+import Breadcrumb from '../components/common/Breadcrumb';
+import GroupTabs from '../components/common/GroupTabs';
 import { useMatches } from '../hooks/useMatches';
 import { useGroups } from '../hooks/useGroups';
 import { formatDate, formatTime } from '../utils/format';
@@ -157,9 +158,28 @@ const GroupDashboard: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-8 flex flex-col gap-6">
-            {nextMatch ? (
-              <>
-                <div className="group relative overflow-hidden rounded-2xl bg-surface-light dark:bg-surface-dark shadow-sm border border-slate-100 dark:border-slate-800 transition-all hover:shadow-lg">
+            {/* Match Card or Empty State */}
+            {!nextMatch ? (
+              /* Empty State - No Matches */
+              <div className="bg-surface-light dark:bg-surface-dark rounded-2xl p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-700">
+                <span className="material-symbols-outlined text-6xl text-gray-300 dark:text-gray-600 mb-4">event_busy</span>
+                <h3 className="text-xl font-bold text-text-main dark:text-white mb-2">
+                  Nenhuma partida criada ainda.
+                </h3>
+                <p className="text-text-muted dark:text-gray-400 mb-6">
+                  Convide a galera e organize o próximo jogo.
+                </p>
+                <button
+                  onClick={() => navigate('/schedule-match')}
+                  className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-dark text-text-main px-6 py-3 rounded-xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-95"
+                >
+                  <span className="material-symbols-outlined">add_circle</span>
+                  Criar primeira partida
+                </button>
+              </div>
+            ) : (
+            /* Match Card */
+            <article className="relative flex flex-col bg-surface-light dark:bg-surface-dark rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 overflow-hidden transition-all duration-300 hover:shadow-xl">
                   <div className="absolute top-4 left-4 z-10 flex gap-2">
                     <span className="px-4 py-1.5 rounded-full bg-primary text-text-main text-xs font-bold shadow-sm flex items-center gap-1">
                       <span className="material-symbols-outlined text-sm icon-filled">check_circle</span>
@@ -221,98 +241,100 @@ const GroupDashboard: React.FC = () => {
                   </button>
                 </div>
               </>
-            ) : (
-              <div className="group relative overflow-hidden rounded-2xl bg-surface-light dark:bg-surface-dark shadow-sm border border-slate-100 dark:border-slate-800 p-8 flex flex-col items-center justify-center gap-4 text-center">
-                <div className="size-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-2">
-                  <span className="material-symbols-outlined text-3xl">event_busy</span>
-                </div>
-                <h3 className="text-xl font-bold dark:text-white">Nenhuma partida agendada</h3>
-                <p className="text-text-muted">Não há jogos marcados no momento. Que tal começar um?</p>
-                <button onClick={() => navigate('/schedule-match')} className="bg-primary text-text-main font-bold py-2.5 px-6 rounded-full hover:bg-primary-hover shadow-lg shadow-primary/20 mt-2">
-                  Criar Nova Partida
-                </button>
-              </div>
+          ) : (
+          <div className="group relative overflow-hidden rounded-2xl bg-surface-light dark:bg-surface-dark shadow-sm border border-slate-100 dark:border-slate-800 p-8 flex flex-col items-center justify-center gap-4 text-center">
+            <div className="size-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-2">
+              <span className="material-symbols-outlined text-3xl">event_busy</span>
+            </div>
+            <h3 className="text-xl font-bold dark:text-white">Nenhuma partida agendada</h3>
+            <p className="text-text-muted">Não há jogos marcados no momento. Que tal começar um?</p>
+            <button onClick={() => navigate('/schedule-match')} className="bg-primary text-text-main font-bold py-2.5 px-6 rounded-full hover:bg-primary-hover shadow-lg shadow-primary/20 mt-2">
+              Criar Nova Partida
+            </button>
+          </div>
             )}
-          </div>
-
-          <div className="lg:col-span-4 flex flex-col gap-4">
-            <div className="bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
-              <h3 className="text-lg font-bold text-text-main dark:text-white mb-4">Membros</h3>
-              <p className="text-text-muted text-sm mb-4">Gerencie seu elenco e convide novos jogadores.</p>
-              <button onClick={() => navigate('/roster')} className="w-full py-2 bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-border-dark rounded-lg text-sm font-bold transition-colors">
-                Ver todos
-              </button>
-            </div>
-          </div>
-
         </div>
-      </main>
-      {/* Edit Match Modal */}
-      {isEditingMatch && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white dark:bg-card-dark rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-text-main dark:text-white">Editar Partida</h3>
-              <button
-                onClick={() => setIsEditingMatch(false)}
-                className="size-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-text-muted hover:text-text-main transition-colors"
-              >
-                <span className="material-symbols-outlined text-xl">close</span>
-              </button>
-            </div>
 
-            <div className="p-6 flex flex-col gap-4">
-              <div>
-                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Data</label>
-                <input
-                  type="date"
-                  value={editForm.date}
-                  onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
-                  className="w-full h-12 rounded-xl bg-gray-50 dark:bg-surface-dark border-transparent focus:border-primary focus:ring-0 text-text-main dark:text-white px-4 transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Horário</label>
-                <input
-                  type="time"
-                  value={editForm.time}
-                  onChange={(e) => setEditForm({ ...editForm, time: e.target.value })}
-                  className="w-full h-12 rounded-xl bg-gray-50 dark:bg-surface-dark border-transparent focus:border-primary focus:ring-0 text-text-main dark:text-white px-4 transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Local</label>
-                <input
-                  type="text"
-                  value={editForm.location}
-                  onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
-                  placeholder="Ex: Arena Soccer"
-                  className="w-full h-12 rounded-xl bg-gray-50 dark:bg-surface-dark border-transparent focus:border-primary focus:ring-0 text-text-main dark:text-white px-4 transition-all"
-                />
-              </div>
-            </div>
-
-            <div className="p-6 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-surface-dark/50 flex gap-3">
-              <button
-                onClick={() => setIsEditingMatch(false)}
-                className="flex-1 h-12 rounded-xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-text-main dark:text-white font-bold hover:bg-gray-50 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSaveMatch}
-                disabled={isSavingMatch}
-                className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary-hover text-text-main font-bold shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
-              >
-                {isSavingMatch ? 'Salvando...' : 'Salvar'}
-              </button>
-            </div>
+        <div className="lg:col-span-4 flex flex-col gap-4">
+          <div className="bg-surface-light dark:bg-surface-dark border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
+            <h3 className="text-lg font-bold text-text-main dark:text-white mb-4">Membros</h3>
+            <p className="text-text-muted text-sm mb-4">Gerencie seu elenco e convide novos jogadores.</p>
+            <button onClick={() => navigate('/roster')} className="w-full py-2 bg-gray-100 dark:bg-surface-dark hover:bg-gray-200 dark:hover:bg-border-dark rounded-lg text-sm font-bold transition-colors">
+              Ver todos
+            </button>
           </div>
         </div>
-      )}
-    </Layout>
+
+      </div>
+    </main>
+      {/* Edit Match Modal */ }
+  {
+    isEditingMatch && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="w-full max-w-md bg-white dark:bg-card-dark rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+            <h3 className="text-xl font-bold text-text-main dark:text-white">Editar Partida</h3>
+            <button
+              onClick={() => setIsEditingMatch(false)}
+              className="size-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-text-muted hover:text-text-main transition-colors"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+          </div>
+
+          <div className="p-6 flex flex-col gap-4">
+            <div>
+              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Data</label>
+              <input
+                type="date"
+                value={editForm.date}
+                onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                className="w-full h-12 rounded-xl bg-gray-50 dark:bg-surface-dark border-transparent focus:border-primary focus:ring-0 text-text-main dark:text-white px-4 transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Horário</label>
+              <input
+                type="time"
+                value={editForm.time}
+                onChange={(e) => setEditForm({ ...editForm, time: e.target.value })}
+                className="w-full h-12 rounded-xl bg-gray-50 dark:bg-surface-dark border-transparent focus:border-primary focus:ring-0 text-text-main dark:text-white px-4 transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Local</label>
+              <input
+                type="text"
+                value={editForm.location}
+                onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                placeholder="Ex: Arena Soccer"
+                className="w-full h-12 rounded-xl bg-gray-50 dark:bg-surface-dark border-transparent focus:border-primary focus:ring-0 text-text-main dark:text-white px-4 transition-all"
+              />
+            </div>
+          </div>
+
+          <div className="p-6 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-surface-dark/50 flex gap-3">
+            <button
+              onClick={() => setIsEditingMatch(false)}
+              className="flex-1 h-12 rounded-xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 text-text-main dark:text-white font-bold hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSaveMatch}
+              disabled={isSavingMatch}
+              className="flex-1 h-12 rounded-xl bg-primary hover:bg-primary-hover text-text-main font-bold shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2"
+            >
+              {isSavingMatch ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+    </Layout >
   );
 };
 

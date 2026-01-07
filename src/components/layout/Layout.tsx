@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { Link, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
-import { usePendingRequestsCount } from '../../hooks/usePendingRequestsCount';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface LayoutProps {
@@ -10,10 +9,8 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-    const { groupId } = useParams<{ groupId: string }>();
     const navigate = useNavigate();
     const location = useLocation();
-    const pendingCount = usePendingRequestsCount();
     const { user } = useAuth();
 
     const isActive = (path: string) => location.pathname === path;
@@ -34,37 +31,30 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                 <>
                                     {/* Unauthenticated Menu */}
                                     <Link className="text-text-main dark:text-gray-200 hover:text-primary transition-colors" to="/">Início</Link>
-                                    <a href="/#how-it-works" className="text-text-main dark:text-gray-200 hover:text-primary transition-colors">Como funciona</a>
                                     <Link className="text-text-main dark:text-gray-200 hover:text-primary transition-colors" to="/login">Entrar</Link>
                                 </>
                             ) : (
                                 <>
-                                    {/* Authenticated Menu */}
-                                    <Link className={`${isActive('/dashboard') ? 'text-primary font-bold' : 'text-text-main dark:text-gray-200 hover:text-primary transition-colors'}`} to="/dashboard">Dashboard</Link>
-                                    <Link className={`${isActive('/dashboard') ? 'text-primary font-bold' : 'text-text-main dark:text-gray-200 hover:text-primary transition-colors'}`} to="/dashboard">Grupos</Link>
+                                    {/* Authenticated Menu - ONLY 2 items */}
+                                    <Link
+                                        className={`px-3 py-1 rounded-full transition-all ${isActive('/dashboard')
+                                            ? 'bg-primary/10 text-green-700 dark:text-primary font-bold'
+                                            : 'text-text-main dark:text-gray-200 hover:text-green-700 dark:hover:text-primary hover:bg-gray-50 dark:hover:bg-white/5'
+                                            }`}
+                                        to="/dashboard"
+                                    >
+                                        Início
+                                    </Link>
 
-                                    {/* Contextual Group Links */}
-                                    {groupId && (
-                                        <>
-                                            <div className="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-2"></div>
-                                            <Link
-                                                className={`flex items-center gap-1 ${location.pathname === `/groups/${groupId}` ? 'text-primary font-bold' : 'text-text-main dark:text-gray-200 hover:text-primary transition-colors'}`}
-                                                to={`/groups/${groupId}`}
-                                            >
-                                                <span className="material-symbols-outlined text-lg">grid_view</span>
-                                                Painel do Grupo
-                                            </Link>
-                                            <Link
-                                                className={`flex items-center gap-1 ${location.pathname.includes('/settings') ? 'text-primary font-bold' : 'text-text-main dark:text-gray-200 hover:text-primary transition-colors'}`}
-                                                to={`/groups/${groupId}/settings`}
-                                            >
-                                                <span className="material-symbols-outlined text-lg">settings</span>
-                                                Configurações
-                                            </Link>
-                                        </>
-                                    )}
-
-                                    <Link className={`${isActive('/profile') ? 'text-primary font-bold' : 'text-text-main dark:text-gray-200 hover:text-primary transition-colors'}`} to="/profile">Perfil</Link>
+                                    <Link
+                                        className={`px-3 py-1 rounded-full transition-all ${isActive('/profile')
+                                            ? 'bg-primary/10 text-green-700 dark:text-primary font-bold'
+                                            : 'text-text-main dark:text-gray-200 hover:text-green-700 dark:hover:text-primary hover:bg-gray-50 dark:hover:bg-white/5'
+                                            }`}
+                                        to="/profile"
+                                    >
+                                        Perfil
+                                    </Link>
                                 </>
                             )}
                         </nav>

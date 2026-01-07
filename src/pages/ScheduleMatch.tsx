@@ -106,8 +106,18 @@ const ScheduleMatch: React.FC = () => {
 
       if (playerError) console.error('Error adding creator to match:', playerError); // Non-blocking but log it
 
-      // Success!
-      // In MVP, maybe we show a modal? For now, go to Dashboard where they will see it.
+      // Success feedback
+      alert('Partida criada com sucesso ⚽');
+
+      // Show invite link CTA
+      const inviteLink = `${window.location.origin}/#/join/${currentGroup?.invite_code}`;
+      const shouldCopy = confirm('Quer copiar o link de convite para compartilhar com o grupo?');
+
+      if (shouldCopy) {
+        navigator.clipboard.writeText(inviteLink);
+        alert('Link copiado! 📋');
+      }
+
       navigate('/dashboard');
 
     } catch (error: any) {

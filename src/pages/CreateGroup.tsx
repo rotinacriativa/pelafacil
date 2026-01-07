@@ -87,8 +87,13 @@ const CreateGroup: React.FC = () => {
         alert("Grupo criado, mas houve um erro ao te adicionar como membro. Contate o suporte.");
       }
 
-      // Success
-      navigate('/dashboard');
+      if (error) throw error;
+
+      // Success feedback
+      alert('Grupo criado com sucesso 🎉');
+
+      // Redirect to the new group
+      navigate(`/groups/${groupData.id}`);
 
     } catch (err: any) {
       console.error("Error creating group:", err);
