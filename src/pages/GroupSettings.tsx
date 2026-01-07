@@ -58,6 +58,7 @@ const GroupSettings: React.FC = () => {
     // Local state for Rules (Description)
     const [rules, setRules] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const lastLoadedGroupId = React.useRef<string | null>(null);
 
     useEffect(() => {
         if (groups.length === 0) refreshGroups();
@@ -65,7 +66,13 @@ const GroupSettings: React.FC = () => {
 
     useEffect(() => {
         if (group) {
-            setRules(group.description || '');
+            // Only sync rules from server if we switched groups or it's the first load
+            // This prevents overwriting user edits if the group refreshes in background
+            if (group.id !== lastLoadedGroupId.current) {
+                setRules(group.description || '');
+                lastLoadedGroupId.current = group.id;
+            }
+
             if (group.role !== 'admin') {
                 navigate(`/groups/${groupId}`);
             }
