@@ -84,9 +84,27 @@ export function useGroupMembers(groupId: string | undefined) {
         }
     };
 
+    const removeMember = async (userId: string) => {
+        if (!groupId) return;
+        try {
+            const { error } = await supabase
+                .from('group_members')
+                .delete()
+                .eq('group_id', groupId)
+                .eq('user_id', userId);
+
+            if (error) throw error;
+            await fetchMembers(); // Refresh list
+            return { error: null };
+        } catch (err: any) {
+            console.error('Error removing member:', err);
+            return { error: err.message };
+        }
+    };
+
     useEffect(() => {
         fetchMembers();
     }, [groupId]);
 
-    return { members, loading, error, refreshMembers: fetchMembers, updateMember };
+    return { members, loading, error, refreshMembers: fetchMembers, updateMember, removeMember };
 }

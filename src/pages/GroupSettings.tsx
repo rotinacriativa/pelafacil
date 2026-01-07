@@ -4,15 +4,19 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useGroups } from '../hooks/useGroups';
 import { useGroupMembers } from '../hooks/useGroupMembers';
 import { useAuth } from '../contexts/AuthContext';
+import ShareModal from '../components/features/ShareModal';
 
 const GroupSettings: React.FC = () => {
     const { groupId } = useParams<{ groupId: string }>();
     const navigate = useNavigate();
     const { groups, refreshGroups, updateGroup } = useGroups();
-    const { members, refreshMembers, updateMember } = useGroupMembers(groupId);
+    const { members, refreshMembers, updateMember, removeMember } = useGroupMembers(groupId);
 
     // Find dynamic group data
     const group = groups.find(g => g.id === groupId);
+
+    // Share Modal State
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
     // Edit Modal State
     const [editingMember, setEditingMember] = useState<any | null>(null);
@@ -128,7 +132,10 @@ const GroupSettings: React.FC = () => {
                             <span className="material-symbols-outlined text-[20px]">arrow_back</span>
                             <span>Voltar</span>
                         </button>
-                        <button className="h-12 px-6 rounded-full bg-primary hover:bg-primary-hover text-text-main font-bold text-sm shadow-lg shadow-primary/20 transition-all flex items-center gap-2">
+                        <button
+                            onClick={() => setIsShareModalOpen(true)}
+                            className="h-12 px-6 rounded-full bg-primary hover:bg-primary-hover text-text-main font-bold text-sm shadow-lg shadow-primary/20 transition-all flex items-center gap-2"
+                        >
                             <span className="material-symbols-outlined text-[20px]">share</span>
                             <span className="hidden sm:inline">Convidar</span>
                         </button>
@@ -145,7 +152,10 @@ const GroupSettings: React.FC = () => {
                                     </div>
                                     <input className="w-full h-12 rounded-xl bg-surface-light dark:bg-surface-dark border-transparent focus:border-primary focus:bg-white dark:focus:bg-[#2a3c2e] focus:ring-0 pl-10 text-text-main dark:text-white placeholder-text-secondary dark:placeholder-gray-500 font-medium transition-all" placeholder="Buscar jogador por nome ou posição..." type="text" />
                                 </div>
-                                <button className="h-12 px-6 rounded-xl bg-surface-light hover:bg-gray-200 dark:bg-surface-dark dark:hover:bg-surface-dark/80 text-text-main dark:text-gray-300 font-bold text-sm transition-all flex items-center justify-center gap-2 shrink-0">
+                                <button
+                                    onClick={() => setIsShareModalOpen(true)}
+                                    className="h-12 px-6 rounded-xl bg-surface-light hover:bg-gray-200 dark:bg-surface-dark dark:hover:bg-surface-dark/80 text-text-main dark:text-gray-300 font-bold text-sm transition-all flex items-center justify-center gap-2 shrink-0"
+                                >
                                     <span className="material-symbols-outlined text-text-secondary">person_add</span>
                                     Adicionar Manualmente
                                 </button>
@@ -204,7 +214,15 @@ const GroupSettings: React.FC = () => {
                                         >
                                             <span className="material-symbols-outlined">edit</span>
                                         </button>
-                                        <button className="flex size-10 items-center justify-center rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Remover Jogador">
+                                        <button
+                                            onClick={async () => {
+                                                if (window.confirm(`Deseja remover ${member.profile.name}?`)) {
+                                                    await removeMember(member.user_id);
+                                                }
+                                            }}
+                                            className="flex size-10 items-center justify-center rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                            title="Remover Jogador"
+                                        >
                                             <span className="material-symbols-outlined">person_remove</span>
                                         </button>
                                     </div>
@@ -351,6 +369,13 @@ const GroupSettings: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <ShareModal
+                isOpen={isShareModalOpen}
+                onClose={() => setIsShareModalOpen(false)}
+                groupName={group?.name}
+                inviteLink={group?.invite_code ? `${window.location.origin}/join/${group.invite_code}` : undefined}
+            />
         </div>
     );
 };
